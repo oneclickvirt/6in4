@@ -292,10 +292,6 @@ if ! command -v wget >/dev/null 2>&1; then
     _yellow "Installing wget"
     ${PACKAGE_INSTALL[int]} wget
 fi
-if ! command -v jq >/dev/null 2>&1; then
-    _yellow "Installing jq"
-    ${PACKAGE_INSTALL[int]} jq
-fi
 if ! command -v dos2unix >/dev/null 2>&1; then
     _yellow "Installing dos2unix"
     ${PACKAGE_INSTALL[int]} dos2unix
@@ -307,10 +303,6 @@ fi
 if ! command -v ipcalc >/dev/null 2>&1; then
     _yellow "Installing ipcalc"
     ${PACKAGE_INSTALL[int]} ipcalc
-fi
-if ! command -v bc >/dev/null 2>&1; then
-    _yellow "Installing bc"
-    ${PACKAGE_INSTALL[int]} bc
 fi
 ${PACKAGE_INSTALL[int]} iproute2
 ${PACKAGE_INSTALL[int]} net-tools
@@ -409,17 +401,28 @@ if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gatew
     ip route add "${ipv6_address_without_last_segment%::*}:${identifier}::/80" dev server-ipv6
     sysctl_path=$(which sysctl)
 
-    # 设置允许IPV6转发
-    echo "net.ipv6.conf.all.forwarding = 1" >>/etc/sysctl.conf
-    $sysctl_path -w net.ipv6.conf.all.forwarding=1
-    $sysctl_path -w net.ipv6.conf.all.proxy_ndp=1
-    $sysctl_path -w net.ipv6.conf.default.proxy_ndp=1
-    $sysctl_path -w net.ipv6.conf.docker0.proxy_ndp=1
-    $sysctl_path -w net.ipv6.conf.${interface}.proxy_ndp=1
-    if [ "$status_he" = true ]; then
-        $sysctl_path -w net.ipv6.conf.he-ipv6.proxy_ndp=1
+    if [ "$system_arch" = "x86" ]; then
+        wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_x86/ndpresponder -O /usr/local/bin/ndpresponder
+        wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
+        chmod 777 /usr/local/bin/ndpresponder
+        chmod 777 /etc/systemd/system/ndpresponder.service
+    elif [ "$system_arch" = "arch" ]; then
+        wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_aarch64/ndpresponder -O /usr/local/bin/ndpresponder
+        wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
+        chmod 777 /usr/local/bin/ndpresponder
+        chmod 777 /etc/systemd/system/ndpresponder.service
     fi
-    $sysctl_path -f
+    if [ -f "/usr/local/bin/ndpresponder" ]; then
+        new_exec_start="ExecStart=/usr/local/bin/ndpresponder -i ${interface} -n ${ipv6_address_without_last_segment}/${ipv6_prefixlen}"
+        file_path="/etc/systemd/system/ndpresponder.service"
+        line_number=6
+        sed -i "${line_number}s|.*|${new_exec_start}|" "$file_path"
+    fi
+    update_sysctl "net.ipv6.conf.all.forwarding=1"
+    update_sysctl "net.ipv6.conf.all.proxy_ndp=1"
+    update_sysctl "net.ipv6.conf.default.proxy_ndp=1"
+    update_sysctl "net.ipv6.conf.${interface}.proxy_ndp=1"
+    
     if [ ! -f "/usr/local/bin/check-dns.sh" ]; then
         wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/docker/main/extra_scripts/check-dns.sh -O /usr/local/bin/check-dns.sh
         wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/docker/main/extra_scripts/check-dns.service -O /etc/systemd/system/check-dns.service
@@ -429,11 +432,11 @@ if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gatew
         systemctl enable check-dns.service
         systemctl start check-dns.service
     fi
+    _green "客户端的宿主机需要安装iproute2包 - The client's host needs to have the iproute2 package installed"
+    _green "The following commands are to be executed on the client:"
+    _green "以下是要在客户端上执行的命令:"
+    echo "ip tunnel add he-ipv6 mode sit remote ${main_ipv4} local ${target_address} ttl 255"
+    echo "ip link set he-ipv6 up"
+    echo "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::2/80 dev he-ipv6"
+    echo "ip route add ::/0 dev he-ipv6"
 fi
-_green "客户端的宿主机需要安装iproute2包 - The client's host needs to have the iproute2 package installed"
-_green "The following commands are to be executed on the client:"
-_green "以下是要在客户端上执行的命令:"
-echo "ip tunnel add he-ipv6 mode sit remote ${main_ipv4} local ${target_address} ttl 255"
-echo "ip link set he-ipv6 up"
-echo "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::2/80 dev he-ipv6"
-echo "ip route add ::/0 dev he-ipv6"
