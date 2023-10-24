@@ -12,8 +12,7 @@ IPv6 tunnels for self-built sit protocols
 
 该方法将提供一种方式，将A上的IPV6网段拆分一个/80的出来，附加到B上使用
 
-This method will provide a way to split a /80 out of the IPV6 segment on A and attach it to B to use the
-
+This method will provide a way to split a /80 out of the IPV6 segment on A and attach it to B to use.
 ## Environmental Preparation
 
 一个带有 至少/64大小的IPV6网段和一个IPV4地址的 双栈VPS (A) 和 一个只带有一个IPV4地址的VPS (B)，下面分别称为服务端和客户端，拆分后客户端将获得一个/80的IPV6子网。
@@ -36,7 +35,7 @@ Execute it
 
 记得写上你需要附加IPV6的机器的IPV4地址，执行完毕后会回传你需要在客户端执行的命令，详见执行后的说明即可
 
-Remember to write the IPV4 address of the machine you need to attach IPV6, after the execution is complete, it will return the command you need to execute in the client, see the instructions after the execution of the can be
+Remember to write the IPV4 address of the machine you need to attach IPV6, after the execution is complete, it will return the command you need to execute in the client, see the instructions after the execution.
 
 为防止忘记复制命令，命令本身也将写入到当前路径下的 6in4.log 文件中
 
