@@ -30,9 +30,9 @@ Execute it
 ./6in4.sh your_client_ipv4
 ```
 
-记得写上你需要附加IPV6的机器的IPV4地址
+记得写上你需要附加IPV6的机器的IPV4地址，执行完毕后会回传你需要在客户端执行的命令，详见执行后的说明即可
 
-Remember to write the IPV4 address of the VPS(B) to which you need to attach IPV6
+Remember to write the IPV4 address of the machine you need to attach IPV6, after the execution is complete, it will return the command you need to execute in the client, see the instructions after the execution of the can be
 
 ## Check server status
 
