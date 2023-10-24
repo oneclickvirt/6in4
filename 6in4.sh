@@ -422,6 +422,8 @@ if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gatew
     update_sysctl "net.ipv6.conf.all.proxy_ndp=1"
     update_sysctl "net.ipv6.conf.default.proxy_ndp=1"
     update_sysctl "net.ipv6.conf.${interface}.proxy_ndp=1"
+    echo "net.ipv6.conf.all.forwarding = 1" >>/etc/sysctl.conf
+    $sysctl_path -p
     systemctl start ndpresponder
     systemctl enable ndpresponder
     
