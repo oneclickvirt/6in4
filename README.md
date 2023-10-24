@@ -30,7 +30,9 @@ Execute it
 ./6in4.sh your_client_ipv4
 ```
 
-记得跟上你的需要附加IPV6的机器的IPV4地址
+记得写上你需要附加IPV6的机器的IPV4地址
+
+Remember to write the IPV4 address of the machine to which you need to attach IPV6
 
 ## Check server status
 
@@ -51,3 +53,9 @@ ip addr show
 ```
 curl ipv6.ip.sb
 ```
+
+## Principle
+
+Use 6in4's tunnel technology, along with ndpresponder to handle the NDP side of the problem, to solve the problem of forwarding IPV6 networks across different servers.
+
+Combining virt.spiritlhl.net or www.spiritlhl.net automates the assignment of IPV6 addresses to containers.
