@@ -1,5 +1,7 @@
 # 6in4
 
+[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Foneclickvirt%2F6in4&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
+
 一键式转发迁移你的IPV6网段
 
 One-click forwarding to migrate your IPV6 segments
