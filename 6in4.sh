@@ -435,8 +435,8 @@ if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gatew
     _green "客户端的宿主机需要安装iproute2包 - The client's host needs to have the iproute2 package installed"
     _green "The following commands are to be executed on the client:"
     _green "以下是要在客户端上执行的命令:"
-    echo "ip tunnel add he-ipv6 mode sit remote ${main_ipv4} local ${target_address} ttl 255"
-    echo "ip link set he-ipv6 up"
-    echo "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::2/80 dev he-ipv6"
-    echo "ip route add ::/0 dev he-ipv6"
+    _blue "ip tunnel add he-ipv6 mode sit remote ${main_ipv4} local ${target_address} ttl 255"
+    _blue "ip link set he-ipv6 up"
+    _blue "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::2/80 dev he-ipv6"
+    _blue "ip route add ::/0 dev he-ipv6"
 fi
