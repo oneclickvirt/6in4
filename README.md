@@ -10,11 +10,15 @@ One-click forwarding to migrate your IPV6 segments
 
 IPv6 tunnels for self-built sit protocols
 
+该方法将提供一种方式，将A上的IPV6网段拆分一个/80的出来，附加到B上使用
+
+This method will provide a way to split a /80 out of the IPV6 segment on A and attach it to B to use the
+
 ## Environmental Preparation
 
-一个带有至少/64子网大小的 双栈VPS (A) 和 一个只有一个IPV4地址的VPS (B)，下面分别称为服务端和客户端。
+一个带有 至少/64大小的IPV6网段和一个IPV4地址的 双栈VPS (A) 和 一个只带有一个IPV4地址的VPS (B)，下面分别称为服务端和客户端，拆分后客户端将获得一个/80的IPV6子网。
 
-A dual-stack VPS (A) with at least /64 subnet size and a VPS (B) with only one IPV4 address, hereafter referred to as server and client, respectively.
+A dual-stack VPS (A) with an IPV6 segment of at least /64 size and an IPV4 address and a VPS (B) with only one IPV4 address, hereafter referred to as server and client, respectively, are split so that the client will be given an IPV6 subnet of /80.
 
 ## Usage
 
@@ -33,6 +37,10 @@ Execute it
 记得写上你需要附加IPV6的机器的IPV4地址，执行完毕后会回传你需要在客户端执行的命令，详见执行后的说明即可
 
 Remember to write the IPV4 address of the machine you need to attach IPV6, after the execution is complete, it will return the command you need to execute in the client, see the instructions after the execution of the can be
+
+为防止忘记复制命令，命令本身也将写入到当前路径下的 6in4.log 文件中
+
+In case you forget to copy the command, the command itself will also be written to the 6in4.log file in the current path
 
 ## Check server status
 
