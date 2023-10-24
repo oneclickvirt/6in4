@@ -234,7 +234,6 @@ update_sysctl() {
 if [ ! -d /usr/local/bin ]; then
     mkdir -p /usr/local/bin
 fi
-rebuild_cloud_init
 statistics_of_run-times
 _green "脚本当天运行次数:${TODAY}，累计运行次数:${TOTAL}"
 check_update
