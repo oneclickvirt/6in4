@@ -76,8 +76,6 @@ check_update() {
     fi
 }
 
-
-
 is_private_ipv6() {
     local address=$1
     # 输入不含:符号
@@ -386,67 +384,71 @@ ipv6_gateway=$(cat /usr/local/bin/6in4_ipv6_gateway)
 fe80_address=$(cat /usr/local/bin/6in4_fe80_address)
 
 # 正式映射
-if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gateway" ] && [ ! -z "$ipv6_address_without_last_segment" ] && [ ! -z "$interface" ] && [ ! -z "$ipv4_address" ] && [ ! -z "$ipv4_prefixlen" ] && [ ! -z "$ipv4_gateway" ] && [ ! -z "$ipv4_subnet" ] && [ ! -z "$fe80_address" ]; then
-    identifier="1369"
-    if [[ "${ipv6_address_without_last_segment: -2}" == "::" ]]; then
-        new_subnet="${ipv6_address_without_last_segment%::*}:${identifier}::/80"
-    else
-        echo "The last two digits of the IPV6 subnet prefix are not ::"
-        exit 1
+sit_tunnel(){
+    if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gateway" ] && [ ! -z "$ipv6_address_without_last_segment" ] && [ ! -z "$interface" ] && [ ! -z "$ipv4_address" ] && [ ! -z "$ipv4_prefixlen" ] && [ ! -z "$ipv4_gateway" ] && [ ! -z "$ipv4_subnet" ] && [ ! -z "$fe80_address" ]; then
+        identifier="1369"
+        if [[ "${ipv6_address_without_last_segment: -2}" == "::" ]]; then
+            new_subnet="${ipv6_address_without_last_segment%::*}:${identifier}::/80"
+        else
+            echo "The last two digits of the IPV6 subnet prefix are not ::"
+            exit 1
+        fi
+        
+        _blue "ip tunnel add server-ipv6 mode sit remote ${target_address} local ${main_ipv4} ttl 255"
+        _blue "ip link set server-ipv6 up"
+        _blue "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::1/80 dev server-ipv6"
+        _blue "ip route add ${ipv6_address_without_last_segment%::*}:${identifier}::/80 dev server-ipv6"
+        
+        ip tunnel add server-ipv6 mode sit remote ${target_address} local ${main_ipv4} ttl 255
+        ip link set server-ipv6 up
+        ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::1/80 dev server-ipv6
+        ip route add ${ipv6_address_without_last_segment%::*}:${identifier}::/80 dev server-ipv6
+        echo "net.ipv6.conf.all.forwarding=1" >>/etc/sysctl.conf
+        sysctl -p
+    
+        sysctl_path=$(which sysctl)
+        update_sysctl "net.ipv6.conf.all.forwarding=1"
+        update_sysctl "net.ipv6.conf.all.proxy_ndp=1"
+        update_sysctl "net.ipv6.conf.default.proxy_ndp=1"
+        update_sysctl "net.ipv6.conf.${interface}.proxy_ndp=1"
+        update_sysctl "net.ipv6.conf.server-ipv6.proxy_ndp=1"
+        update_sysctl "net.ipv6.conf.all.accept_ra=2"
+        $sysctl_path -p
+        
+        if [ "$system_arch" = "x86" ]; then
+            wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_x86/ndpresponder -O /usr/local/bin/ndpresponder
+            wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
+            chmod 777 /usr/local/bin/ndpresponder
+            chmod 777 /etc/systemd/system/ndpresponder.service
+        elif [ "$system_arch" = "arch" ]; then
+            wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_aarch64/ndpresponder -O /usr/local/bin/ndpresponder
+            wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
+            chmod 777 /usr/local/bin/ndpresponder
+            chmod 777 /etc/systemd/system/ndpresponder.service
+        fi
+        if [ -f "/usr/local/bin/ndpresponder" ]; then
+            new_exec_start="ExecStart=/usr/local/bin/ndpresponder -i ${interface} -n ${ipv6_address_without_last_segment}/${ipv6_prefixlen}"
+            file_path="/etc/systemd/system/ndpresponder.service"
+            line_number=6
+            sed -i "${line_number}s|.*|${new_exec_start}|" "$file_path"
+        fi
+        systemctl start ndpresponder
+        systemctl enable ndpresponder
+        systemctl status ndpresponder
+        
+        _green "客户端的宿主机需要安装iproute2包 - The client's host needs to have the iproute2 package installed"
+        _green "The following commands are to be executed on the client:"
+        _green "以下是要在客户端上执行的命令:"
+        _blue "ip tunnel add user-ipv6 mode sit remote ${main_ipv4} local ${target_address} ttl 255"
+        _blue "ip link set user-ipv6 up"
+        _blue "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::2/80 dev user-ipv6"
+        _blue "ip route add ::/0 dev user-ipv6"
+        touch 6in4.log
+        echo "ip tunnel add user-ipv6 mode sit remote ${main_ipv4} local ${target_address} ttl 255" >> 6in4.log
+        echo "ip link set user-ipv6 up" >> 6in4.log
+        echo "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::2/80 dev user-ipv6" >> 6in4.log
+        echo "ip route add ::/0 dev user-ipv6" >> 6in4.log
     fi
-    
-    _blue "ip tunnel add server-ipv6 mode sit remote ${target_address} local ${main_ipv4} ttl 255"
-    _blue "ip link set server-ipv6 up"
-    _blue "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::1/80 dev server-ipv6"
-    _blue "ip route add ${ipv6_address_without_last_segment%::*}:${identifier}::/80 dev server-ipv6"
-    
-    ip tunnel add server-ipv6 mode sit remote ${target_address} local ${main_ipv4} ttl 255
-    ip link set server-ipv6 up
-    ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::1/80 dev server-ipv6
-    ip route add ${ipv6_address_without_last_segment%::*}:${identifier}::/80 dev server-ipv6
-    echo "net.ipv6.conf.all.forwarding=1" >>/etc/sysctl.conf
-    sysctl -p
+}
 
-    sysctl_path=$(which sysctl)
-    update_sysctl "net.ipv6.conf.all.forwarding=1"
-    update_sysctl "net.ipv6.conf.all.proxy_ndp=1"
-    update_sysctl "net.ipv6.conf.default.proxy_ndp=1"
-    update_sysctl "net.ipv6.conf.${interface}.proxy_ndp=1"
-    update_sysctl "net.ipv6.conf.server-ipv6.proxy_ndp=1"
-    update_sysctl "net.ipv6.conf.all.accept_ra=2"
-    $sysctl_path -p
-    
-    if [ "$system_arch" = "x86" ]; then
-        wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_x86/ndpresponder -O /usr/local/bin/ndpresponder
-        wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
-        chmod 777 /usr/local/bin/ndpresponder
-        chmod 777 /etc/systemd/system/ndpresponder.service
-    elif [ "$system_arch" = "arch" ]; then
-        wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_aarch64/ndpresponder -O /usr/local/bin/ndpresponder
-        wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
-        chmod 777 /usr/local/bin/ndpresponder
-        chmod 777 /etc/systemd/system/ndpresponder.service
-    fi
-    if [ -f "/usr/local/bin/ndpresponder" ]; then
-        new_exec_start="ExecStart=/usr/local/bin/ndpresponder -i ${interface} -n ${ipv6_address_without_last_segment}/${ipv6_prefixlen}"
-        file_path="/etc/systemd/system/ndpresponder.service"
-        line_number=6
-        sed -i "${line_number}s|.*|${new_exec_start}|" "$file_path"
-    fi
-    systemctl start ndpresponder
-    systemctl enable ndpresponder
-    systemctl status ndpresponder
-    
-    _green "客户端的宿主机需要安装iproute2包 - The client's host needs to have the iproute2 package installed"
-    _green "The following commands are to be executed on the client:"
-    _green "以下是要在客户端上执行的命令:"
-    _blue "ip tunnel add user-ipv6 mode sit remote ${main_ipv4} local ${target_address} ttl 255"
-    _blue "ip link set user-ipv6 up"
-    _blue "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::2/80 dev user-ipv6"
-    _blue "ip route add ::/0 dev user-ipv6"
-    touch 6in4.log
-    echo "ip tunnel add user-ipv6 mode sit remote ${main_ipv4} local ${target_address} ttl 255" >> 6in4.log
-    echo "ip link set user-ipv6 up" >> 6in4.log
-    echo "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::2/80 dev user-ipv6" >> 6in4.log
-    echo "ip route add ::/0 dev user-ipv6" >> 6in4.log
-fi
+sit_tunnel
