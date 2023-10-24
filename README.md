@@ -6,6 +6,10 @@
 
 One-click forwarding to migrate your IPV6 segments
 
+自建sit协议的IPv6隧道
+
+IPv6 tunnels for self-built sit protocols
+
 ## Environmental Preparation
 
 一个带有至少/64子网大小的 双栈VPS (A) 和 一个只有一个IPV4地址的VPS (B)，下面分别称为服务端和客户端。
@@ -28,7 +32,7 @@ Execute it
 
 记得跟上你的需要附加IPV6的机器的IPV4地址
 
-## Check status
+## Check server status
 
 ```
 systemctl status ndpresponder
@@ -36,4 +40,14 @@ systemctl status ndpresponder
 
 ```
 ip addr show
+```
+
+## Check client status
+
+```
+ip addr show
+```
+
+```
+curl ipv6.ip.sb
 ```
