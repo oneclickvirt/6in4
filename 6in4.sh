@@ -443,4 +443,9 @@ if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gatew
     _blue "ip link set he-ipv6 up"
     _blue "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::2/80 dev he-ipv6"
     _blue "ip route add ::/0 dev he-ipv6"
+    touch 6in4.log
+    echo "ip tunnel add he-ipv6 mode sit remote ${main_ipv4} local ${target_address} ttl 255" >> 6in4.log
+    echo "ip link set he-ipv6 up" >> 6in4.log
+    echo "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::2/80 dev he-ipv6" >> 6in4.log
+    echo "ip route add ::/0 dev he-ipv6" >> 6in4.log
 fi
