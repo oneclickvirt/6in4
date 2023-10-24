@@ -32,7 +32,7 @@ Execute it
 
 记得写上你需要附加IPV6的机器的IPV4地址
 
-Remember to write the IPV4 address of the machine to which you need to attach IPV6
+Remember to write the IPV4 address of the VPS(B) to which you need to attach IPV6
 
 ## Check server status
 
