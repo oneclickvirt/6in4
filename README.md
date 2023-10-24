@@ -13,6 +13,7 @@ IPv6 tunnels for self-built sit protocols
 该方法将提供一种方式，将A上的IPV6网段拆分一个/80的出来，附加到B上使用
 
 This method will provide a way to split a /80 out of the IPV6 segment on A and attach it to B to use.
+
 ## Environmental Preparation
 
 一个带有 至少/64大小的IPV6网段和一个IPV4地址的 双栈VPS (A) 和 一个只带有一个IPV4地址的VPS (B)，下面分别称为服务端和客户端，拆分后客户端将获得一个/80的IPV6子网。
