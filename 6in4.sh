@@ -230,6 +230,49 @@ update_sysctl() {
   fi
 }
 
+check_interface() {
+    if [ -z "$interface_2" ]; then
+        interface=${interface_1}
+        return
+    elif [ -n "$interface_1" ] && [ -n "$interface_2" ]; then
+        if ! grep -q "$interface_1" "/etc/network/interfaces" && ! grep -q "$interface_2" "/etc/network/interfaces" && [ -f "/etc/network/interfaces.d/50-cloud-init" ]; then
+            if grep -q "$interface_1" "/etc/network/interfaces.d/50-cloud-init" || grep -q "$interface_2" "/etc/network/interfaces.d/50-cloud-init"; then
+                if ! grep -q "$interface_1" "/etc/network/interfaces.d/50-cloud-init" && grep -q "$interface_2" "/etc/network/interfaces.d/50-cloud-init"; then
+                    interface=${interface_2}
+                    return
+                elif ! grep -q "$interface_2" "/etc/network/interfaces.d/50-cloud-init" && grep -q "$interface_1" "/etc/network/interfaces.d/50-cloud-init"; then
+                    interface=${interface_1}
+                    return
+                fi
+            fi
+        fi
+        if grep -q "$interface_1" "/etc/network/interfaces"; then
+            interface=${interface_1}
+            return
+        elif grep -q "$interface_2" "/etc/network/interfaces"; then
+            interface=${interface_2}
+            return
+        else
+            interfaces_list=$(ip addr show | awk '/^[0-9]+: [^lo]/ {print $2}' | cut -d ':' -f 1)
+            interface=""
+            for iface in $interfaces_list; do
+                if [[ "$iface" = "$interface_1" || "$iface" = "$interface_2" ]]; then
+                    interface="$iface"
+                fi
+            done
+            if [ -z "$interface" ]; then
+                interface="eth0"
+            fi
+            return
+        fi
+    else
+        interface="eth0"
+        return
+    fi
+    _red "Physical interface not found, exit execution"
+    _red "找不到物理接口，退出执行"
+    exit 1
+}
 
 if [ ! -d /usr/local/bin ]; then
     mkdir -p /usr/local/bin
