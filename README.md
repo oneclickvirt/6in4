@@ -25,3 +25,13 @@ Execute it
 ```
 
 记得跟上你的需要附加IPV6的机器的IPV4地址
+
+## Check status
+
+```
+symtectl status ndpresponder
+```
+
+```
+ip addr show
+```
