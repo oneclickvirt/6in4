@@ -395,10 +395,10 @@ if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gatew
         exit 1
     fi
 
-    ip tunnel add server-ipv6 mode sit remote "${target_address}" local "${main_ipv4}" ttl 255
-    ip link set server-ipv6 up
-    ip addr add "${ipv6_address_without_last_segment%::*}:${identifier}::1/80" dev server-ipv6
-    ip route add "${ipv6_address_without_last_segment%::*}:${identifier}::/80" dev server-ipv6
+    ip tunnel add he-ipv6 mode sit remote "${target_address}" local "${main_ipv4}" ttl 255
+    ip link set he-ipv6 up
+    ip addr add "${ipv6_address_without_last_segment%::*}:${identifier}::1/80" dev he-ipv6
+    ip route add "${ipv6_address_without_last_segment%::*}:${identifier}::/80" dev he-ipv6
     sysctl_path=$(which sysctl)
 
     if [ "$system_arch" = "x86" ]; then
