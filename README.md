@@ -29,7 +29,7 @@ Execute it
 ## Check status
 
 ```
-symtectl status ndpresponder
+systemctl status ndpresponder
 ```
 
 ```
