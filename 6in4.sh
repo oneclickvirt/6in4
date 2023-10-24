@@ -422,6 +422,8 @@ if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gatew
     update_sysctl "net.ipv6.conf.all.proxy_ndp=1"
     update_sysctl "net.ipv6.conf.default.proxy_ndp=1"
     update_sysctl "net.ipv6.conf.${interface}.proxy_ndp=1"
+    systemctl start ndpresponder
+    systemctl enable ndpresponder
     
     if [ ! -f "/usr/local/bin/check-dns.sh" ]; then
         wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/docker/main/extra_scripts/check-dns.sh -O /usr/local/bin/check-dns.sh
