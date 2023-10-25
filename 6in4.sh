@@ -42,7 +42,6 @@ done
 
 target_address="${1:-None}"
 tunnel_mode="${2:-sit}"
-target_mask="${3:-80}"
 
 if [ "${target_address}" == "None" ]; then
     _red "Client's IPV4 address not set"
@@ -305,10 +304,6 @@ if ! command -v ipcalc >/dev/null 2>&1; then
     _yellow "Installing ipcalc"
     ${PACKAGE_INSTALL[int]} ipcalc
 fi
-if ! command -v sipcalc >/dev/null 2>&1; then
-    _yellow "Installing sipcalc"
-    ${PACKAGE_INSTALL[int]} sipcalc
-fi
 ${PACKAGE_INSTALL[int]} iproute2
 ${PACKAGE_INSTALL[int]} net-tools
 check_china
@@ -405,30 +400,25 @@ ipv6_tunnel() {
             tunnel_mode="sit"
         fi
     fi
-    if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gateway" ] && [ ! -z "$ipv6_address_without_last_segment" ] && [ ! -z "$interface" ] && [ ! -z "$ipv4_address" ] && [ ! -z "$ipv4_prefixlen" ] && [ ! -z "$ipv4_gateway" ] && [ ! -z "$ipv4_subnet" ]; then
-        # 获取宿主机IPV6上指定大小分区的第二个子网(因为第一个子网将包含宿主机本来就绑定了的IPV6地址)的起始IPV6地址0000结尾那个
-        ipv6_subnet_2=$(sipcalc --v6split=${target_mask} ${ipv6_address}/${ipv6_prefixlen} | awk '/Network/{n++} n==2' | awk '{print $3}' | grep -v '^$')
-        # ipv6_subnet_2=$( sipcalc --v6split=64 2001:db8::/48 | awk '/Network/{n++} n==2' | awk '{print $3}' | grep -v '^$' )
-        # 切除最后4位地址(切除0000)，只保留前缀方便后续处理
-        ipv6_subnet_2_without_last_segment="${ipv6_subnet_2%:*}:"
-        if [ -n "$ipv6_subnet_2_without_last_segment" ]; then
-            :
+    if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gateway" ] && [ ! -z "$ipv6_address_without_last_segment" ] && [ ! -z "$interface" ] && [ ! -z "$ipv4_address" ] && [ ! -z "$ipv4_prefixlen" ] && [ ! -z "$ipv4_gateway" ] && [ ! -z "$ipv4_subnet" ] && [ ! -z "$fe80_address" ]; then
+        identifier=$(od -An -N2 -t x1 /dev/urandom | tr -d ' ')
+        if [[ "${ipv6_address_without_last_segment: -2}" == "::" ]]; then
+            new_subnet="${ipv6_address_without_last_segment%::*}:${identifier}::/80"
         else
-            _red "The ipv6 subnet 2: ${ipv6_subnet_2}"
-            _red "The ipv6 target mask: ${target_mask}"
+            echo "The last two digits of the IPV6 subnet prefix are not ::"
             exit 1
         fi
 
         _blue "ip tunnel add server-ipv6 mode ${tunnel_mode} remote ${target_address} local ${main_ipv4} ttl 255"
         _blue "ip link set server-ipv6 up"
-        _blue "ip addr add ${ipv6_subnet_2_without_last_segment}1/${target_mask} dev server-ipv6"
-        _blue "ip route add ${ipv6_subnet_2_without_last_segment}/${target_mask} dev server-ipv6"
+        _blue "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::1/80 dev server-ipv6"
+        _blue "ip route add ${ipv6_address_without_last_segment%::*}:${identifier}::/80 dev server-ipv6"
         
         
         ip tunnel add server-ipv6 mode ${tunnel_mode} remote ${target_address} local ${main_ipv4} ttl 255
         ip link set server-ipv6 up
-        ip addr add ${ipv6_subnet_2_without_last_segment}1/${target_mask} dev server-ipv6
-        ip route add ${ipv6_subnet_2_without_last_segment}/${target_mask} dev server-ipv6
+        ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::1/80 dev server-ipv6
+        ip route add ${ipv6_address_without_last_segment%::*}:${identifier}::/80 dev server-ipv6
         echo "net.ipv6.conf.all.forwarding=1" >>/etc/sysctl.conf
         sysctl -p
 
@@ -473,17 +463,15 @@ ipv6_tunnel() {
         _green "以下是要在客户端上执行的命令:"
         _blue "ip tunnel add user-ipv6 mode ${tunnel_mode} remote ${main_ipv4} local ${target_address} ttl 255"
         _blue "ip link set user-ipv6 up"
-        _blue "ip addr add ${ipv6_subnet_2_without_last_segment}2/${target_mask} dev user-ipv6"
+        _blue "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::2/80 dev user-ipv6"
         _blue "ip route add ::/0 dev user-ipv6"
         rm -rf 6in4.log
         touch 6in4.log
         echo "ip tunnel add user-ipv6 mode ${tunnel_mode} remote ${main_ipv4} local ${target_address} ttl 255" >>6in4.log
         echo "ip link set user-ipv6 up" >>6in4.log
-        echo "ip addr add ${ipv6_subnet_2_without_last_segment}2/${target_mask} dev user-ipv6" >>6in4.log
+        echo "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::2/80 dev user-ipv6" >>6in4.log
         echo "ip route add ::/0 dev user-ipv6" >>6in4.log
     fi
 }
 
-_green "This step will take about 1 minute, please be patient."
-_green "在此步骤中将停留约 1 分钟，请耐心等待"
 ipv6_tunnel
