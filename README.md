@@ -8,7 +8,7 @@ One-click forwarding to migrate your IPV6 segments
 
 自建sit/gre/ipip协议的IPv6隧道
 
-IPv6 tunnels for self-built sit protocols
+IPv6 tunnels for self-built sit/gre/ipip protocols
 
 该方法将提供一种方式，将A上的IPV6网段拆分一个/80的出来，附加到B上使用
 
@@ -34,9 +34,11 @@ Execute it
 ./6in4.sh client_ipv4 <mode_type> 
 ```
 
+mode_type: sit、gre、ipip
+
 记得写上你需要附加IPV6的机器的IPV4地址和协议类型(不填则默认为sit类型)，执行完毕后会回传你需要在客户端执行的命令，详见执行后的说明即可
 
-Remember to write the IPV4 address and protocol type of the machine you need to attach IPV6 (not fill in the default sit type), after the execution is completed, it will send back the commands you need to be executed in the client, see the instructions after the execution of the
+Remember to write the IPV4 address and protocol type of the machine you need to attach IPV6 (not fill in the default sit type), after the execution is completed, it will send back the commands you need to be executed in the client, see the instructions after the execution.
 
 为防止忘记复制命令，命令本身也将写入到当前路径下的 6in4.log 文件中
 
