@@ -8,7 +8,7 @@ One-click forwarding to migrate your IPV6 segments
 
 自建sit/gre/ipip协议的IPv6隧道
 
-IPv6 tunnels for self-built sit/gre/ipip protocols
+IPv6 Tunnel Broker for self-built sit/gre/ipip protocols
 
 该方法将提供一种方式，将A上的IPV6网段拆分一个/80的出来，附加到B上使用
 
