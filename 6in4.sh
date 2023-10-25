@@ -391,8 +391,12 @@ ipv6_tunnel() {
         if [ ! -n "$gre_info" ]; then
             _red "No match gre in kernal. Use sit mode"
             tunnel_mode="sit"
-        else
-            tunnel_mode="gre"
+        fi
+    elif [[ "${tunnel_mode}" == "ipip" ]]; then
+        ipip_info=$(modinfo ipip)
+        if [ ! -n "$ipip_info" ]; then
+            _red "No match ipip in kernal. Use sit mode"
+            tunnel_mode="sit"
         fi
     fi
     if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gateway" ] && [ ! -z "$ipv6_address_without_last_segment" ] && [ ! -z "$interface" ] && [ ! -z "$ipv4_address" ] && [ ! -z "$ipv4_prefixlen" ] && [ ! -z "$ipv4_gateway" ] && [ ! -z "$ipv4_subnet" ] && [ ! -z "$fe80_address" ]; then
