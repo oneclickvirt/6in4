@@ -40,15 +40,6 @@ for ((int = 0; int < ${#REGEX[@]}; int++)); do
     fi
 done
 
-target_address="${1:-None}"
-tunnel_mode="${2:-sit}"
-
-if [ "${target_address}" == "None" ]; then
-    _red "Client's IPV4 address not set"
-    _red "未设置客户端的IPV4地址"
-    exit 1
-fi
-
 statistics_of_run-times() {
     COUNT=$(
         curl -4 -ksm1 "https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Foneclickvirt%2F6in4&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=&edge_flat=true" 2>&1 ||
@@ -75,6 +66,16 @@ check_update() {
         rm "$temp_file_apt_fix"
     else
         ${PACKAGE_UPDATE[int]}
+    fi
+}
+
+is_ipv4() {
+    local ip=$1
+    local regex="^([0-9]{1,3}\.){3}[0-9]{1,3}$"
+    if [[ $ip =~ $regex ]]; then
+        return 0 # 符合IPv4格式
+    else
+        return 1 # 不符合IPv4格式
     fi
 }
 
@@ -274,6 +275,139 @@ check_interface() {
     exit 1
 }
 
+calculate_subnets() {
+    local subnets
+    local subnet_prefix
+    local total_prefix
+    total_prefix=$1
+    subnet_prefix=$2
+    subnets=$(($subnet_prefix - $total_prefix))
+    if [ $subnets -gt 16 ]; then
+        subnet_prefix=$(($total_prefix + 16))
+    fi
+    echo "$subnet_prefix"
+}
+
+ipv6_tunnel() {
+    if [[ "${tunnel_mode}" == "gre" ]]; then
+        gre_info=$(modinfo gre)
+        if [ ! -n "$gre_info" ]; then
+            _red "No match gre in kernal. Use sit mode"
+            tunnel_mode="sit"
+        fi
+    elif [[ "${tunnel_mode}" == "ipip" ]]; then
+        ipip_info=$(modinfo ipip)
+        if [ ! -n "$ipip_info" ]; then
+            _red "No match ipip in kernal. Use sit mode"
+            tunnel_mode="sit"
+        fi
+    fi
+    if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gateway" ] && [ ! -z "$ipv6_address_without_last_segment" ] && [ ! -z "$interface" ] && [ ! -z "$ipv4_address" ] && [ ! -z "$ipv4_prefixlen" ] && [ ! -z "$ipv4_gateway" ] && [ ! -z "$ipv4_subnet" ]; then
+        # 获取宿主机IPV6上指定大小分区的第二个子网(因为第一个子网将包含宿主机本来就绑定了的IPV6地址)的起始IPV6地址0000结尾那个
+        # echo "sipcalc --v6split=${target_mask} ${ipv6_address}/${ipv6_prefixlen} | awk '/Network/{n++} n==2' | awk '{print $3}' | grep -v '^$'"
+        ipv6_subnet_2=$(sipcalc --v6split=${target_mask} ${ipv6_address}/${ipv6_prefixlen} | awk '/Network/{n++} n==2' | awk '{print $3}' | grep -v '^$')
+        # ipv6_subnet_2=$( sipcalc --v6split=64 2001:db8::/48 | awk '/Network/{n++} n==2' | awk '{print $3}' | grep -v '^$' )
+        # 切除最后4位地址(切除0000)，只保留前缀方便后续处理
+        ipv6_subnet_2_without_last_segment="${ipv6_subnet_2%:*}:"
+        if [ -n "$ipv6_subnet_2_without_last_segment" ]; then
+            :
+        else
+            _red "The ipv6 subnet 2: ${ipv6_subnet_2}"
+            _red "The ipv6 target mask: ${target_mask}"
+            exit 1
+        fi
+
+        _blue "ip tunnel add server-ipv6 mode ${tunnel_mode} remote ${target_address} local ${main_ipv4} ttl 255"
+        _blue "ip link set server-ipv6 up"
+        _blue "ip addr add ${ipv6_subnet_2_without_last_segment}1/${target_mask} dev server-ipv6"
+        _blue "ip route add ${ipv6_subnet_2_without_last_segment}/${target_mask} dev server-ipv6"
+
+        ip tunnel add server-ipv6 mode ${tunnel_mode} remote ${target_address} local ${main_ipv4} ttl 255
+        ip link set server-ipv6 up
+        ip addr add ${ipv6_subnet_2_without_last_segment}1/${target_mask} dev server-ipv6
+        ip route add ${ipv6_subnet_2_without_last_segment}/${target_mask} dev server-ipv6
+        echo "net.ipv6.conf.all.forwarding=1" >>/etc/sysctl.conf
+        sysctl -p
+
+        sysctl_path=$(which sysctl)
+        update_sysctl "net.ipv6.conf.all.forwarding=1"
+        update_sysctl "net.ipv6.conf.all.proxy_ndp=1"
+        update_sysctl "net.ipv6.conf.default.proxy_ndp=1"
+        update_sysctl "net.ipv6.conf.${interface}.proxy_ndp=1"
+        update_sysctl "net.ipv6.conf.server-ipv6.proxy_ndp=1"
+        update_sysctl "net.ipv6.conf.all.accept_ra=2"
+        $sysctl_path -p
+
+        if [ "$system_arch" = "x86" ]; then
+            wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_x86/ndpresponder -O /usr/local/bin/ndpresponder
+            wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
+            chmod 777 /usr/local/bin/ndpresponder
+            chmod 777 /etc/systemd/system/ndpresponder.service
+            systemctl start ndpresponder
+            systemctl enable ndpresponder
+            systemctl status ndpresponder 2>/dev/null
+        elif [ "$system_arch" = "arch" ]; then
+            wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_aarch64/ndpresponder -O /usr/local/bin/ndpresponder
+            wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
+            chmod 777 /usr/local/bin/ndpresponder
+            chmod 777 /etc/systemd/system/ndpresponder.service
+            systemctl start ndpresponder
+            systemctl enable ndpresponder
+            systemctl status ndpresponder 2>/dev/null
+        fi
+        if [ -f "/usr/local/bin/ndpresponder" ]; then
+            new_exec_start="ExecStart=/usr/local/bin/ndpresponder -i ${interface} -n ${ipv6_address_without_last_segment}/${ipv6_prefixlen}"
+            file_path="/etc/systemd/system/ndpresponder.service"
+            line_number=6
+            sed -i "${line_number}s|.*|${new_exec_start}|" "$file_path"
+        fi
+
+        _yellow "This tunnel will use ${tunnel_mode} type"
+        _yellow "这个通道将使用${tunnel_mode}类型"
+        _green "The client's host needs to have the iproute2 package installed, eg: apt install iproute2 -y"
+        _green "客户端的宿主机需要安装iproute2包，比如 apt install iproute2 -y"
+        _green "The following commands are to be executed on the client:"
+        _green "以下是要在客户端上执行的命令:"
+        _blue "ip tunnel add user-ipv6 mode ${tunnel_mode} remote ${main_ipv4} local ${target_address} ttl 255"
+        _blue "ip link set user-ipv6 up"
+        _blue "ip addr add ${ipv6_subnet_2_without_last_segment}2/${target_mask} dev user-ipv6"
+        _blue "ip route add ::/0 dev user-ipv6"
+        rm -rf 6in4.log
+        touch 6in4.log
+        echo "ip tunnel add user-ipv6 mode ${tunnel_mode} remote ${main_ipv4} local ${target_address} ttl 255" >>6in4.log
+        echo "ip link set user-ipv6 up" >>6in4.log
+        echo "ip addr add ${ipv6_subnet_2_without_last_segment}2/${target_mask} dev user-ipv6" >>6in4.log
+        echo "ip route add ::/0 dev user-ipv6" >>6in4.log
+    fi
+}
+
+# 读取参数并判断是否符合格式
+target_address="${1:-None}"
+tunnel_mode="${2:-sit}"
+target_mask="${3:-80}"
+if [ "${target_address}" == "None" ]; then
+    _red "Client's IPV4 address not set"
+    _red "未设置客户端的IPV4地址"
+    exit 1
+else
+    if is_ipv4 "$target_address"; then
+        _green "This target IPV4 address will be used: ${target_address}"
+        _green "将使用此IPV4地址作为目标地址: ${target_address}"
+    else
+        _yellow "IPV4 addresses doesn't match rule"
+        _yellow "IPV4地址不符合规则"
+        exit 1
+    fi
+fi
+if [[ "$tunnel_mode" == "sit" || "$tunnel_mode" == "gre" || "$tunnel_mode" == "ipip" ]]; then
+    _green "Will use ${tunnel_mode} protocol for ipv6 tunnel creation"
+    _green "将使用${tunnel_mode}协议进行ipv6隧道创建"
+else
+    _yellow "${tunnel_mode} protocol doesn't match rule"
+    _yellow "${tunnel_mode} 协议不符合规则"
+    exit 1
+fi
+
 if [ ! -d /usr/local/bin ]; then
     mkdir -p /usr/local/bin
 fi
@@ -303,6 +437,10 @@ fi
 if ! command -v ipcalc >/dev/null 2>&1; then
     _yellow "Installing ipcalc"
     ${PACKAGE_INSTALL[int]} ipcalc
+fi
+if ! command -v sipcalc >/dev/null 2>&1; then
+    _yellow "Installing sipcalc"
+    ${PACKAGE_INSTALL[int]} sipcalc
 fi
 ${PACKAGE_INSTALL[int]} iproute2
 ${PACKAGE_INSTALL[int]} net-tools
@@ -384,94 +522,15 @@ ipv6_address_without_last_segment="${ipv6_address%:*}:"
 ipv6_prefixlen=$(cat /usr/local/bin/6in4_ipv6_prefixlen)
 ipv6_gateway=$(cat /usr/local/bin/6in4_ipv6_gateway)
 fe80_address=$(cat /usr/local/bin/6in4_fe80_address)
-
+# 防止切分的子网过小算不出来
+target_mask_temp=$(calculate_subnets $ipv6_prefixlen $target_mask)
+if [ "$target_mask_temp" != "$target_mask" ]; then
+    target_mask=${target_mask_temp}
+    _yellow "The difference between the size of the cut molecular net and the original subnet is detected to be greater than 2 to the 16th power"
+    _yellow "so the size of the molecular net to be cut is modified to be /$subnet_prefix"
+    _yellow "检测到切分子网和原始子网大小差值大于2的16次方，故而修改要切分子网为 /$subnet_prefix"
+fi
 # 正式映射
-ipv6_tunnel() {
-    if [[ "${tunnel_mode}" == "gre" ]]; then
-        gre_info=$(modinfo gre)
-        if [ ! -n "$gre_info" ]; then
-            _red "No match gre in kernal. Use sit mode"
-            tunnel_mode="sit"
-        fi
-    elif [[ "${tunnel_mode}" == "ipip" ]]; then
-        ipip_info=$(modinfo ipip)
-        if [ ! -n "$ipip_info" ]; then
-            _red "No match ipip in kernal. Use sit mode"
-            tunnel_mode="sit"
-        fi
-    fi
-    if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gateway" ] && [ ! -z "$ipv6_address_without_last_segment" ] && [ ! -z "$interface" ] && [ ! -z "$ipv4_address" ] && [ ! -z "$ipv4_prefixlen" ] && [ ! -z "$ipv4_gateway" ] && [ ! -z "$ipv4_subnet" ] && [ ! -z "$fe80_address" ]; then
-        identifier=$(od -An -N2 -t x1 /dev/urandom | tr -d ' ')
-        if [[ "${ipv6_address_without_last_segment: -2}" == "::" ]]; then
-            new_subnet="${ipv6_address_without_last_segment%::*}:${identifier}::/80"
-        else
-            echo "The last two digits of the IPV6 subnet prefix are not ::"
-            exit 1
-        fi
-
-        _blue "ip tunnel add server-ipv6 mode ${tunnel_mode} remote ${target_address} local ${main_ipv4} ttl 255"
-        _blue "ip link set server-ipv6 up"
-        _blue "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::1/80 dev server-ipv6"
-        _blue "ip route add ${ipv6_address_without_last_segment%::*}:${identifier}::/80 dev server-ipv6"
-        
-        
-        ip tunnel add server-ipv6 mode ${tunnel_mode} remote ${target_address} local ${main_ipv4} ttl 255
-        ip link set server-ipv6 up
-        ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::1/80 dev server-ipv6
-        ip route add ${ipv6_address_without_last_segment%::*}:${identifier}::/80 dev server-ipv6
-        echo "net.ipv6.conf.all.forwarding=1" >>/etc/sysctl.conf
-        sysctl -p
-
-        sysctl_path=$(which sysctl)
-        update_sysctl "net.ipv6.conf.all.forwarding=1"
-        update_sysctl "net.ipv6.conf.all.proxy_ndp=1"
-        update_sysctl "net.ipv6.conf.default.proxy_ndp=1"
-        update_sysctl "net.ipv6.conf.${interface}.proxy_ndp=1"
-        update_sysctl "net.ipv6.conf.server-ipv6.proxy_ndp=1"
-        update_sysctl "net.ipv6.conf.all.accept_ra=2"
-        $sysctl_path -p
-
-        if [ "$system_arch" = "x86" ]; then
-            wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_x86/ndpresponder -O /usr/local/bin/ndpresponder
-            wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
-            chmod 777 /usr/local/bin/ndpresponder
-            chmod 777 /etc/systemd/system/ndpresponder.service
-            systemctl start ndpresponder
-            systemctl enable ndpresponder
-            systemctl status ndpresponder 2>/dev/null
-        elif [ "$system_arch" = "arch" ]; then
-            wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_aarch64/ndpresponder -O /usr/local/bin/ndpresponder
-            wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
-            chmod 777 /usr/local/bin/ndpresponder
-            chmod 777 /etc/systemd/system/ndpresponder.service
-            systemctl start ndpresponder
-            systemctl enable ndpresponder
-            systemctl status ndpresponder 2>/dev/null
-        fi
-        if [ -f "/usr/local/bin/ndpresponder" ]; then
-            new_exec_start="ExecStart=/usr/local/bin/ndpresponder -i ${interface} -n ${ipv6_address_without_last_segment}/${ipv6_prefixlen}"
-            file_path="/etc/systemd/system/ndpresponder.service"
-            line_number=6
-            sed -i "${line_number}s|.*|${new_exec_start}|" "$file_path"
-        fi
-
-        _yellow "This tunnel will use ${tunnel_mode} type"
-        _yellow "这个通道将使用${tunnel_mode}类型"
-        _green "The client's host needs to have the iproute2 package installed, eg: apt install iproute2 -y"
-        _green "客户端的宿主机需要安装iproute2包，比如 apt install iproute2 -y"
-        _green "The following commands are to be executed on the client:"
-        _green "以下是要在客户端上执行的命令:"
-        _blue "ip tunnel add user-ipv6 mode ${tunnel_mode} remote ${main_ipv4} local ${target_address} ttl 255"
-        _blue "ip link set user-ipv6 up"
-        _blue "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::2/80 dev user-ipv6"
-        _blue "ip route add ::/0 dev user-ipv6"
-        rm -rf 6in4.log
-        touch 6in4.log
-        echo "ip tunnel add user-ipv6 mode ${tunnel_mode} remote ${main_ipv4} local ${target_address} ttl 255" >>6in4.log
-        echo "ip link set user-ipv6 up" >>6in4.log
-        echo "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::2/80 dev user-ipv6" >>6in4.log
-        echo "ip route add ::/0 dev user-ipv6" >>6in4.log
-    fi
-}
-
+_green "This step will take about 1 minute, please be patient."
+_green "在此步骤中将停留约 1 分钟，请耐心等待"
 ipv6_tunnel

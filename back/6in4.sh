@@ -40,16 +40,6 @@ for ((int = 0; int < ${#REGEX[@]}; int++)); do
     fi
 done
 
-is_ipv4() {
-    local ip=$1
-    local regex="^([0-9]{1,3}\.){3}[0-9]{1,3}$"
-    if [[ $ip =~ $regex ]]; then
-        return 0 # 符合IPv4格式
-    else
-        return 1 # 不符合IPv4格式
-    fi
-}
-
 statistics_of_run-times() {
     COUNT=$(
         curl -4 -ksm1 "https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Foneclickvirt%2F6in4&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=&edge_flat=true" 2>&1 ||
@@ -76,6 +66,16 @@ check_update() {
         rm "$temp_file_apt_fix"
     else
         ${PACKAGE_UPDATE[int]}
+    fi
+}
+
+is_ipv4() {
+    local ip=$1
+    local regex="^([0-9]{1,3}\.){3}[0-9]{1,3}$"
+    if [[ $ip =~ $regex ]]; then
+        return 0 # 符合IPv4格式
+    else
+        return 1 # 不符合IPv4格式
     fi
 }
 
@@ -276,19 +276,16 @@ check_interface() {
 }
 
 calculate_subnets() {
-  local subnets
-  local subnet_prefix
-  local total_prefix
-  total_prefix=$1
-  subnet_prefix=$2
-  subnets=$(($subnet_prefix - $total_prefix))
-  if [ $subnets -gt 16 ]; then
-     subnet_prefix=$(($total_prefix + 16))
-     _yellow "The difference between the size of the cut molecular net and the original subnet is detected to be greater than 2 to the 16th power"
-     _yellow "so the size of the molecular net to be cut is modified to be /$subnet_prefix"
-     _yellow "检测到切分子网和原始子网大小差值大于2的16次方，故而修改要切分子网为 /$subnet_prefix"
-  fi
-  echo "$subnet_prefix"
+    local subnets
+    local subnet_prefix
+    local total_prefix
+    total_prefix=$1
+    subnet_prefix=$2
+    subnets=$(($subnet_prefix - $total_prefix))
+    if [ $subnets -gt 16 ]; then
+        subnet_prefix=$(($total_prefix + 16))
+    fi
+    echo "$subnet_prefix"
 }
 
 ipv6_tunnel() {
@@ -324,8 +321,7 @@ ipv6_tunnel() {
         _blue "ip link set server-ipv6 up"
         _blue "ip addr add ${ipv6_subnet_2_without_last_segment}1/${target_mask} dev server-ipv6"
         _blue "ip route add ${ipv6_subnet_2_without_last_segment}/${target_mask} dev server-ipv6"
-        
-        
+
         ip tunnel add server-ipv6 mode ${tunnel_mode} remote ${target_address} local ${main_ipv4} ttl 255
         ip link set server-ipv6 up
         ip addr add ${ipv6_subnet_2_without_last_segment}1/${target_mask} dev server-ipv6
@@ -527,7 +523,13 @@ ipv6_prefixlen=$(cat /usr/local/bin/6in4_ipv6_prefixlen)
 ipv6_gateway=$(cat /usr/local/bin/6in4_ipv6_gateway)
 fe80_address=$(cat /usr/local/bin/6in4_fe80_address)
 # 防止切分的子网过小算不出来
-target_mask=$(calculate_subnets $ipv6_prefixlen $target_mask)
+target_mask_temp=$(calculate_subnets $ipv6_prefixlen $target_mask)
+if [ "$target_mask_temp" != "$target_mask" ]; then
+    target_mask=${target_mask_temp}
+    _yellow "The difference between the size of the cut molecular net and the original subnet is detected to be greater than 2 to the 16th power"
+    _yellow "so the size of the molecular net to be cut is modified to be /$subnet_prefix"
+    _yellow "检测到切分子网和原始子网大小差值大于2的16次方，故而修改要切分子网为 /$subnet_prefix"
+fi
 # 正式映射
 _green "This step will take about 1 minute, please be patient."
 _green "在此步骤中将停留约 1 分钟，请耐心等待"
