@@ -3,6 +3,7 @@
 # https://github.com/oneclickvirt/6in4
 # 2023.10.25
 
+cd /root >/dev/null 2>&1
 _red() { echo -e "\033[31m\033[01m$@\033[0m"; }
 _green() { echo -e "\033[32m\033[01m$@\033[0m"; }
 _yellow() { echo -e "\033[33m\033[01m$@\033[0m"; }
@@ -400,7 +401,7 @@ ipv6_tunnel() {
         fi
     fi
     if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gateway" ] && [ ! -z "$ipv6_address_without_last_segment" ] && [ ! -z "$interface" ] && [ ! -z "$ipv4_address" ] && [ ! -z "$ipv4_prefixlen" ] && [ ! -z "$ipv4_gateway" ] && [ ! -z "$ipv4_subnet" ] && [ ! -z "$fe80_address" ]; then
-        identifier="1369"
+        identifier=$(od -An -N2 -t x1 /dev/urandom | tr -d ' ')
         if [[ "${ipv6_address_without_last_segment: -2}" == "::" ]]; then
             new_subnet="${ipv6_address_without_last_segment%::*}:${identifier}::/80"
         else
@@ -464,6 +465,7 @@ ipv6_tunnel() {
         _blue "ip link set user-ipv6 up"
         _blue "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::2/80 dev user-ipv6"
         _blue "ip route add ::/0 dev user-ipv6"
+        rm -rf 6in4.log
         touch 6in4.log
         echo "ip tunnel add user-ipv6 mode ${tunnel_mode} remote ${main_ipv4} local ${target_address} ttl 255" >>6in4.log
         echo "ip link set user-ipv6 up" >>6in4.log
