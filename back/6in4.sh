@@ -385,6 +385,7 @@ ipv6_tunnel() {
     fi
 }
 
+# 读取参数并判断是否符合格式
 target_address="${1:-None}"
 tunnel_mode="${2:-sit}"
 target_mask="${3:-80}"
@@ -410,14 +411,7 @@ else
     _yellow "${tunnel_mode} 协议不符合规则"
     exit 1
 fi
-if [ $((target_mask & (target_mask - 1))) -eq 0 ]; then
-    _green "will use /${target_mask} for subnet slicing"
-    _green "将使用/${target_mask}进行子网切分"
-else
-    _yellow "subnet /${target_mask} size doesn't match rule"
-    _yellow "子网/${target_mask}大小不符合规则"
-    exit 1
-fi
+
 if [ ! -d /usr/local/bin ]; then
     mkdir -p /usr/local/bin
 fi
