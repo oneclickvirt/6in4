@@ -37,7 +37,7 @@ Execute it
 ```
 
 | Options | Optional Option 1 | Optional Option 2 | Optional Option 3 |
-|--------|--------|--------|--------|--------|
+|--------|--------|--------|--------|
 | <mode_type> | gre | sit | ipip |
 | <subnet_size> | 64 | 80 | 112 |
 
