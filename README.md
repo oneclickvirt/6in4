@@ -20,7 +20,7 @@ One-click forwarding to migrate your IPV6 segments
 | --------|--------|
 | one IPV4 address (server_ipv4) | one IPV4 address (clinet_ipv4) |
 | one IPV6 subnet | no IPV6 address |
-| Hereafter referred to as server | Hereafter referred to as server client |
+| Hereafter referred to as server | Hereafter referred to as client |
 
 ## Usage
 
