@@ -62,6 +62,22 @@ ip addr show
 curl ipv6.ip.sb
 ```
 
+## Delete tunnel
+
+server
+
+```
+ip link set server-ipv6 down
+ip tunnel del server-ipv6
+```
+
+client
+
+```
+ip link set user down
+ip tunnel del user
+```
+
 ## Principle
 
 Use 6in4's tunnel technology, along with ndpresponder to handle the NDP side of the problem, to solve the problem of forwarding IPV6 networks (/80) across different servers.
