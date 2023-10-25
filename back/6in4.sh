@@ -275,6 +275,18 @@ check_interface() {
     exit 1
 }
 
+calculate_subnets() {
+  local subnets
+  local subnet_prefix
+  local total_prefix
+  total_prefix=$1
+  subnet_prefix=$2
+  subnets=$(($subnet_prefix - $total_prefix))
+  if subnets >= 16
+  
+}
+
+
 if [ ! -d /usr/local/bin ]; then
     mkdir -p /usr/local/bin
 fi
