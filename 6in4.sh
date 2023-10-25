@@ -1,7 +1,7 @@
 #!/bin/bash
 # from
 # https://github.com/oneclickvirt/6in4
-# 2023.10.24
+# 2023.10.25
 
 _red() { echo -e "\033[31m\033[01m$@\033[0m"; }
 _green() { echo -e "\033[32m\033[01m$@\033[0m"; }
@@ -40,6 +40,7 @@ for ((int = 0; int < ${#REGEX[@]}; int++)); do
 done
 
 target_address="${1:-None}"
+tunnel_mode="${2:-sit}"
 
 if [ "${target_address}" == "None" ]; then
     _red "Client's IPV4 address not set"
@@ -385,12 +386,14 @@ fe80_address=$(cat /usr/local/bin/6in4_fe80_address)
 
 # 正式映射
 ipv6_tunnel() {
-    gre_info=$(modinfo gre)
-    if [ ! -n "$gre_info" ]; then
-        _red "No match gre in kernal. Use sit mode"
-        tunnel_mode="sit"
-    else
-        tunnel_mode="gre"
+    if [[ "${tunnel_mode}" == "gre" ]]; then
+        gre_info=$(modinfo gre)
+        if [ ! -n "$gre_info" ]; then
+            _red "No match gre in kernal. Use sit mode"
+            tunnel_mode="sit"
+        else
+            tunnel_mode="gre"
+        fi
     fi
     if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gateway" ] && [ ! -z "$ipv6_address_without_last_segment" ] && [ ! -z "$interface" ] && [ ! -z "$ipv4_address" ] && [ ! -z "$ipv4_prefixlen" ] && [ ! -z "$ipv4_gateway" ] && [ ! -z "$ipv4_subnet" ] && [ ! -z "$fe80_address" ]; then
         identifier="1369"
