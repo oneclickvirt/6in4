@@ -282,10 +282,11 @@ calculate_subnets() {
   total_prefix=$1
   subnet_prefix=$2
   subnets=$(($subnet_prefix - $total_prefix))
-  if subnets >= 16
-  
+  if [ $subnets -gt 16 ]; then
+     subnet_prefix=$(($total_prefix + 16))
+  fi
+  return $subnet_prefix
 }
-
 
 if [ ! -d /usr/local/bin ]; then
     mkdir -p /usr/local/bin
@@ -401,6 +402,8 @@ ipv6_address_without_last_segment="${ipv6_address%:*}:"
 ipv6_prefixlen=$(cat /usr/local/bin/6in4_ipv6_prefixlen)
 ipv6_gateway=$(cat /usr/local/bin/6in4_ipv6_gateway)
 fe80_address=$(cat /usr/local/bin/6in4_fe80_address)
+# 防止切分的子网过小算不出来
+target_mask=$(calculate_subnets $ipv6_prefixlen $target_mask)
 
 # 正式映射
 ipv6_tunnel() {
