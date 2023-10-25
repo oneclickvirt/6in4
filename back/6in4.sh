@@ -407,6 +407,7 @@ ipv6_tunnel() {
     fi
     if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gateway" ] && [ ! -z "$ipv6_address_without_last_segment" ] && [ ! -z "$interface" ] && [ ! -z "$ipv4_address" ] && [ ! -z "$ipv4_prefixlen" ] && [ ! -z "$ipv4_gateway" ] && [ ! -z "$ipv4_subnet" ]; then
         # 获取宿主机IPV6上指定大小分区的第二个子网(因为第一个子网将包含宿主机本来就绑定了的IPV6地址)的起始IPV6地址0000结尾那个
+        echo "sipcalc --v6split=${target_mask} ${ipv6_address}/${ipv6_prefixlen} | awk '/Network/{n++} n==2' | awk '{print $3}' | grep -v '^$'"
         ipv6_subnet_2=$(sipcalc --v6split=${target_mask} ${ipv6_address}/${ipv6_prefixlen} | awk '/Network/{n++} n==2' | awk '{print $3}' | grep -v '^$')
         # ipv6_subnet_2=$( sipcalc --v6split=64 2001:db8::/48 | awk '/Network/{n++} n==2' | awk '{print $3}' | grep -v '^$' )
         # 切除最后4位地址(切除0000)，只保留前缀方便后续处理
