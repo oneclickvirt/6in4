@@ -449,7 +449,7 @@ ipv6_tunnel() {
         fi
         systemctl start ndpresponder
         systemctl enable ndpresponder
-        systemctl status ndpresponder
+        systemctl status ndpresponder 2>/dev/null
 
         _yellow "This tunnel will use ${tunnel_mode} type"
         _yellow "这个通道将使用${tunnel_mode}类型"
