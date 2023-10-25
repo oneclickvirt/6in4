@@ -384,7 +384,14 @@ ipv6_gateway=$(cat /usr/local/bin/6in4_ipv6_gateway)
 fe80_address=$(cat /usr/local/bin/6in4_fe80_address)
 
 # 正式映射
-sit_tunnel() {
+ipv6_tunnel() {
+    gre_info=$(modinfo gre)
+    if [ ! -n "$gre_info" ]; then
+        _red "No match gre in kernal. Use sit mode"
+        tunnel_mode="sit"
+    else
+        tunnel_mode="gre"
+    fi
     if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gateway" ] && [ ! -z "$ipv6_address_without_last_segment" ] && [ ! -z "$interface" ] && [ ! -z "$ipv4_address" ] && [ ! -z "$ipv4_prefixlen" ] && [ ! -z "$ipv4_gateway" ] && [ ! -z "$ipv4_subnet" ] && [ ! -z "$fe80_address" ]; then
         identifier="1369"
         if [[ "${ipv6_address_without_last_segment: -2}" == "::" ]]; then
@@ -394,12 +401,13 @@ sit_tunnel() {
             exit 1
         fi
 
-        _blue "ip tunnel add server-ipv6 mode sit remote ${target_address} local ${main_ipv4} ttl 255"
+        _blue "ip tunnel add server-ipv6 mode ${tunnel_mode} remote ${target_address} local ${main_ipv4} ttl 255"
         _blue "ip link set server-ipv6 up"
         _blue "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::1/80 dev server-ipv6"
         _blue "ip route add ${ipv6_address_without_last_segment%::*}:${identifier}::/80 dev server-ipv6"
-
-        ip tunnel add server-ipv6 mode sit remote ${target_address} local ${main_ipv4} ttl 255
+        
+        
+        ip tunnel add server-ipv6 mode ${tunnel_mode} remote ${target_address} local ${main_ipv4} ttl 255
         ip link set server-ipv6 up
         ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::1/80 dev server-ipv6
         ip route add ${ipv6_address_without_last_segment%::*}:${identifier}::/80 dev server-ipv6
@@ -436,19 +444,22 @@ sit_tunnel() {
         systemctl enable ndpresponder
         systemctl status ndpresponder
 
-        _green "客户端的宿主机需要安装iproute2包 - The client's host needs to have the iproute2 package installed"
+        _yellow "This tunnel will use ${tunnel_mode} type"
+        _yellow "这个通道将使用${tunnel_mode}类型"
+        _green "The client's host needs to have the iproute2 package installed"
+        _green "客户端的宿主机需要安装iproute2包"
         _green "The following commands are to be executed on the client:"
         _green "以下是要在客户端上执行的命令:"
-        _blue "ip tunnel add user-ipv6 mode sit remote ${main_ipv4} local ${target_address} ttl 255"
+        _blue "ip tunnel add user-ipv6 mode ${tunnel_mode} remote ${main_ipv4} local ${target_address} ttl 255"
         _blue "ip link set user-ipv6 up"
         _blue "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::2/80 dev user-ipv6"
         _blue "ip route add ::/0 dev user-ipv6"
         touch 6in4.log
-        echo "ip tunnel add user-ipv6 mode sit remote ${main_ipv4} local ${target_address} ttl 255" >>6in4.log
+        echo "ip tunnel add user-ipv6 mode ${tunnel_mode} remote ${main_ipv4} local ${target_address} ttl 255" >>6in4.log
         echo "ip link set user-ipv6 up" >>6in4.log
         echo "ip addr add ${ipv6_address_without_last_segment%::*}:${identifier}::2/80 dev user-ipv6" >>6in4.log
         echo "ip route add ::/0 dev user-ipv6" >>6in4.log
     fi
 }
 
-sit_tunnel
+ipv6_tunnel
