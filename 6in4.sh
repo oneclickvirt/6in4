@@ -1,7 +1,7 @@
 #!/bin/bash
 # from
 # https://github.com/oneclickvirt/6in4
-# 2023.10.25
+# 2023.10.26
 
 cd /root >/dev/null 2>&1
 _red() { echo -e "\033[31m\033[01m$@\033[0m"; }
@@ -283,7 +283,10 @@ calculate_subnets() {
     subnet_prefix=$2
     subnets=$(($subnet_prefix - $total_prefix))
     if [ $subnets -gt 16 ]; then
-        subnet_prefix=$(($total_prefix + 16))
+        subnet_prefix=${total_prefix}
+        while ((($subnet_prefix % 8) != 0)); do
+            ((subnet_prefix += 2))
+        done
     fi
     echo "$subnet_prefix"
 }

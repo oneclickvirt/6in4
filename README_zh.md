@@ -45,7 +45,7 @@ curl -L https://raw.githubusercontent.com/oneclickvirt/6in4/main/6in4.sh -o 6in4
 
 ```<mode_type>```暂时只支持那三种协议，越靠前的越推荐，不填则默认为```sit```协议
 
-```<subnet_size>```只要比原系统子网掩码大就行，且是2的倍数，不填则默认为```80```
+```<subnet_size>```只要比原系统子网掩码大就行，且是8的倍数，不填则默认为```80```
 
 记得```client_ipv4```替换为需要附加IPV6的机器的IPV4地址，执行完毕后会回传你需要在客户端执行的命令，详见执行后的说明即可
 

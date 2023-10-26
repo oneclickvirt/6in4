@@ -45,7 +45,7 @@ Execute it
 
 ```<mode_type>``` only support those three protocols for now, the more advanced the more recommended, no fill in the default is ```sit``` protocol
 
-```<subnet_size>``` as long as it is larger than the original system subnet mask, and is a multiple of 2, if you don't fill it in, it defaults to ```80```.
+```<subnet_size>``` as long as it is larger than the original system subnet mask, and is a multiple of 8, if you don't fill it in, it defaults to ```80```.
 
 Remember to replace ```client_ipv4``` with the IPV4 address of the machine you want to attach IPV6 to, and the command you need to execute on the client side will be sent back to you after execution, see the instructions after execution for details.
 
