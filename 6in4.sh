@@ -284,6 +284,7 @@ calculate_subnets() {
     subnets=$(($subnet_prefix - $total_prefix))
     if [ $subnets -gt 16 ]; then
         subnet_prefix=${total_prefix}
+        ((subnet_prefix += 1))
         while ((($subnet_prefix % 8) != 0)); do
             ((subnet_prefix += 2))
         done
