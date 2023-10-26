@@ -6,6 +6,8 @@ One-click forwarding to migrate your IPV6 segments
 
 [English](README.md) | [中文文档](README_zh.md)
 
+Similar to https://tunnelbroker.net/ Build your own "Hurricane Electric Free IPv6 Tunnel Broker"
+
 ## Features
 
 - [x] Self-built IPv6 tunnel for sit/gre/ipip protocols
@@ -84,3 +86,7 @@ client
 ip link set user-ipv6 down
 ip tunnel del user-ipv6
 ```
+
+## Persistent tunnel
+
+See [https://www.spiritlhl.net/en_US/guide/lxd_custom.html#usage](https://www.spiritlhl.net/en_US/guide/lxd_custom.html#usage) for more details

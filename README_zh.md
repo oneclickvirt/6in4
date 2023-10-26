@@ -6,6 +6,8 @@
 
 [English](README.md) | [中文文档](README_zh.md)
 
+类似 https://tunnelbroker.net/ 自建一个 "Hurricane Electric Free IPv6 Tunnel Broker"
+
 ## 功能
 
 - [x] 自建sit/gre/ipip协议的IPv6隧道
@@ -84,3 +86,7 @@ ip tunnel del server-ipv6
 ip link set user-ipv6 down
 ip tunnel del user-ipv6
 ```
+
+## 持久化隧道
+
+详见 [https://virt.spiritlhl.net/guide/lxd_custom.html#%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%95](https://virt.spiritlhl.net/guide/lxd_custom.html#%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%95) 中的说明
