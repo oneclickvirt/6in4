@@ -527,8 +527,8 @@ target_mask_temp=$(calculate_subnets $ipv6_prefixlen $target_mask)
 if [ "$target_mask_temp" != "$target_mask" ]; then
     target_mask=${target_mask_temp}
     _yellow "The difference between the size of the cut molecular net and the original subnet is detected to be greater than 2 to the 16th power"
-    _yellow "so the size of the molecular net to be cut is modified to be /$subnet_prefix"
-    _yellow "检测到切分子网和原始子网大小差值大于2的16次方，故而修改要切分子网为 /$subnet_prefix"
+    _yellow "so the size of the molecular net to be cut is modified to be /$target_mask"
+    _yellow "检测到切分子网和原始子网大小差值大于2的16次方，故而修改要切分子网为 /$target_mask"
 fi
 # 正式映射
 _green "This step will take about 1 minute, please be patient."
