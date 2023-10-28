@@ -59,7 +59,7 @@ Because some servers have default intranet IPV6 routes that conflict with the tu
 default_route=$(ip -6 route show | awk '/default via/{print $3}') && [ -n "$default_route" ] && ip -6 route del default via $default_route dev eth0
 ```
 
-This assumes that your client's server's default NIC is ```eth0```, and you can use ```ip -6 route``` to see the default route and replace it.
+This assumes that your client's server's default NIC is ```eth0```, and you can use ```ip -6 route``` to see the default route and replace it, the default route starts with ``default via`` and uses ``dev`` to specify the default NIC, you just need to find it by following this rule.
 
 ## Check server status
 
