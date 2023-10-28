@@ -1,7 +1,7 @@
 #!/bin/bash
 # from
 # https://github.com/oneclickvirt/6in4
-# 2023.10.26
+# 2023.10.28
 
 cd /root >/dev/null 2>&1
 _red() { echo -e "\033[31m\033[01m$@\033[0m"; }
@@ -327,10 +327,17 @@ ipv6_tunnel() {
         ip link set server-ipv6 up
         ip addr add ${ipv6_subnet_2_without_last_segment}1/${target_mask} dev server-ipv6
         ip route add ${ipv6_subnet_2_without_last_segment}/${target_mask} dev server-ipv6
-        echo "net.ipv6.conf.all.forwarding=1" >>/etc/sysctl.conf
-        sysctl -p
-
+        update_sysctl "net.ipv6.conf.all.forwarding=1"
         sysctl_path=$(which sysctl)
+        ${sysctl_path} -p
+        
+        rm -rf 6in4_server.log
+        touch 6in4_server.log
+        echo "ip tunnel add server-ipv6 mode ${tunnel_mode} remote ${target_address} local ${main_ipv4} ttl 255" >>6in4_server.log
+        echo "ip link set server-ipv6 up" >>6in4.log
+        echo "ip addr add ${ipv6_subnet_2_without_last_segment}1/${target_mask} dev server-ipv6" >>6in4_server.log
+        echo "ip route add ${ipv6_subnet_2_without_last_segment}/${target_mask} dev server-ipv6" >>6in4_server.log
+
         update_sysctl "net.ipv6.conf.all.forwarding=1"
         update_sysctl "net.ipv6.conf.all.proxy_ndp=1"
         update_sysctl "net.ipv6.conf.default.proxy_ndp=1"
