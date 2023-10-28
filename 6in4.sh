@@ -351,25 +351,21 @@ ipv6_tunnel() {
             wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
             chmod 777 /usr/local/bin/ndpresponder
             chmod 777 /etc/systemd/system/ndpresponder.service
-            systemctl start ndpresponder
-            systemctl enable ndpresponder
-            systemctl status ndpresponder 2>/dev/null
         elif [ "$system_arch" = "arch" ]; then
             wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_aarch64/ndpresponder -O /usr/local/bin/ndpresponder
             wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
             chmod 777 /usr/local/bin/ndpresponder
             chmod 777 /etc/systemd/system/ndpresponder.service
-            systemctl start ndpresponder
-            systemctl enable ndpresponder
-            systemctl status ndpresponder 2>/dev/null
         fi
         if [ -f "/usr/local/bin/ndpresponder" ]; then
             new_exec_start="ExecStart=/usr/local/bin/ndpresponder -i ${interface} -n ${ipv6_address_without_last_segment}/${ipv6_prefixlen}"
             file_path="/etc/systemd/system/ndpresponder.service"
             line_number=6
             sed -i "${line_number}s|.*|${new_exec_start}|" "$file_path"
+            systemctl start ndpresponder
+            systemctl enable ndpresponder
+            systemctl status ndpresponder 2>/dev/null
         fi
-
         _yellow "This tunnel will use ${tunnel_mode} type"
         _yellow "这个通道将使用${tunnel_mode}类型"
         _green "The client's host needs to have the iproute2 package installed, eg: apt install iproute2 -y"
