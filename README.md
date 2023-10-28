@@ -49,7 +49,17 @@ Execute it
 
 Remember to replace ```client_ipv4``` with the IPV4 address of the machine you want to attach IPV6 to, and the command you need to execute on the client side will be sent back to you after execution, see the instructions after execution for details.
 
-To prevent you from forgetting to copy the commands, the commands themselves will be written to the ```6in4.log``` file under the current path, you can use ```cat 6in4.log``` to query the commands that need to be executed on the client side
+To prevent forgetting to copy commands, the commands to be executed by the client itself will be written to the ```6in4.log``` file under the current path, and the commands to be executed by the client can be queried using ```cat 6in4.log```.
+
+To prevent forgetting that the server tunnel disappears after reboot, the commands to be executed by the server itself will be written to the ```6in4_server.log``` file under the current path, you can use ```cat 6in4_server.log``` to query the commands that need to be executed by the server to redeploy the tunnel after reboot.
+
+Because some servers have default intranet IPV6 routes that conflict with the tunnel, you can use the following command to remove the default IPV6 routes
+
+```
+default_route=$(ip -6 route show | awk '/default via/{print $3}') && [ -n "$default_route" ] && ip -6 route del default via $default_route dev eth0
+```
+
+This assumes that your client's server's default NIC is ```eth0```, and you can use ```ip -6 route``` to see the default route and replace it.
 
 ## Check server status
 
