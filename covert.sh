@@ -21,9 +21,11 @@ done
 
 # 检测 ifupdwon/ifupdown2/无 属于那种情况
 
-# 对于 ifupdown 非 ifupdown2 的情况，转换为v4tunnel类型
+# 对于 ifupdown 非 ifupdown2 的情况，转换为 v4tunnel 类型
 
-# 对于 ifupdown2 非 ifupdown 的情况，转换为sit类型
+# 对于 ifupdown2 非 ifupdown 的情况，转换为 si t类型
 
-# 对于都没有的情况，尝试安装 ifupdown 并转换为v4tunnel类型
+# 对于都没有的情况，尝试安装 ifupdown 并转换为 v4tunnel 类型
+
+# 检测是否存在路由冲突的情况，如果存在则删除默认的IPV6路由，如果不存在则不做处理
 
