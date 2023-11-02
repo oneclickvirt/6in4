@@ -1,7 +1,7 @@
 #!/bin/bash
 # from
 # https://github.com/oneclickvirt/6in4
-# 2023.10.30
+# 2023.11.02
 
 REGEX=("debian" "ubuntu" "centos|red hat|kernel|oracle linux|alma|rocky" "'amazon linux'" "fedora" "arch")
 RELEASE=("Debian" "Ubuntu" "CentOS" "CentOS" "Fedora" "Arch")
@@ -23,7 +23,7 @@ done
 # 检测 ifupdown2
 status_ifupdown=-1
 if [ "$SYSTEM" = "Debian" ] || [ "$SYSTEM" = "Ubuntu" ]; then
-    if dpkg -s ifupdown2 &>/dev/null; then
+    if dpkg -S ifupdown2 &>/dev/null; then
         status_ifupdown=2
     else
         # 检测 ifupdown
@@ -38,15 +38,15 @@ else
 fi
 
 chattr -i /etc/network/interfaces
-if [ "$SYSTEM" == 1 ]; then
+if [ "$status_ifupdown" == 1 ]; then
     # 对于 ifupdown 非 ifupdown2 的情况，转换为 v4tunnel 类型
     sed -i '/^mode sit/d' /etc/network/interfaces
     sed -i 's/tunnel/v4tunnel/g' /etc/network/interfaces
-elif [ "$SYSTEM" == 2 ]; then
+elif [ "$status_ifupdown" == 2 ]; then
     # 对于 ifupdown2 非 ifupdown 的情况，转换为 sit 类型
     sed -i 's/v4tunnel/tunnel/g' /etc/network/interfaces
     sed -i '/tunnel/ a\    mode sit' /etc/network/interfaces
-elif [ "$SYSTEM" == 0 ]; then
+elif [ "$status_ifupdown" == 0 ]; then
     # 对于都没有的情况，尝试安装 ifupdown 并转换为 v4tunnel 类型，不行再换另一种形式
     apt-get install ifupdown -y
     if [[ $? -eq 0 ]]; then
