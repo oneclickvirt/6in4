@@ -99,4 +99,4 @@ ip tunnel del user-ipv6
 
 ## 持久化隧道
 
-详见 [https://virt.spiritlhl.net/guide/lxd_custom.html#%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%95](https://virt.spiritlhl.net/guide/lxd_custom.html#%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%95) 中的说明
+详见 [https://virt.spiritlhl.net/guide/lxd_custom.html#%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%95](https://virt.spiritlhl.net/guide/lxd_custom.html#%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%95) 和 [https://ipv6tunnel.spiritlhl.top/](https://ipv6tunnel.spiritlhl.top/) 中的说明

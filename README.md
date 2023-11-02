@@ -99,4 +99,4 @@ ip tunnel del user-ipv6
 
 ## Persistent tunnel
 
-See [https://www.spiritlhl.net/en_US/guide/lxd_custom.html#usage](https://www.spiritlhl.net/en_US/guide/lxd_custom.html#usage) for more details
+See [https://www.spiritlhl.net/en_US/guide/lxd_custom.html#usage](https://www.spiritlhl.net/en_US/guide/lxd_custom.html#usage) and [https://ipv6tunnel.spiritlhl.top/](https://ipv6tunnel.spiritlhl.top/) for more details
