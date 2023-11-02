@@ -38,11 +38,11 @@ else
 fi
 
 chattr -i /etc/network/interfaces
-if [ "$status_ifupdown" == 1 ]; then
+if [ "$status_ifupdown" == 1 ] && grep -q "mode sit" /etc/network/interfaces > /dev/null; then
     # 对于 ifupdown 非 ifupdown2 的情况，转换为 v4tunnel 类型
     sed -i '/^mode sit/d' /etc/network/interfaces
     sed -i 's/tunnel/v4tunnel/g' /etc/network/interfaces
-elif [ "$status_ifupdown" == 2 ]; then
+elif [ "$status_ifupdown" == 2 ] && grep -q "v4tunnel" /etc/network/interfaces > /dev/null; then
     # 对于 ifupdown2 非 ifupdown 的情况，转换为 sit 类型
     sed -i 's/v4tunnel/tunnel/g' /etc/network/interfaces
     sed -i '/tunnel/ a\    mode sit' /etc/network/interfaces
@@ -62,3 +62,4 @@ elif [ "$status_ifupdown" == 0 ]; then
 fi
 
 # 检测是否存在路由冲突的情况，如果存在则删除默认的IPV6路由，如果不存在则不做处理
+systemctl restart networking
