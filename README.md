@@ -2,18 +2,18 @@
 
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Foneclickvirt%2F6in4&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
 
-One-click forwarding to migrate your IPV6 segments
+One-click forwarding to migrate your IPV6 segments.
 
 [English](README.md) | [中文文档](README_zh.md)
 
-Similar to https://tunnelbroker.net/ Build your own "Hurricane Electric Free IPv6 Tunnel Broker"
+Similar to https://tunnelbroker.net/ to build your own "Hurricane Electric Free IPv6 Tunnel Broker".
 
 ## Features
 
 - [x] Self-built IPv6 tunnel for sit/gre/ipip protocols
 - [x] Support to customize the IPV6 subnet size to be cut out, and the appropriate IPV6 subnet information in CIDR format will be calculated automatically.
 - [x] Automatically recognizes the IPV6 subnet size of the server side
-- [x] will automatically set up the tunnel server and print the commands that the client needs to execute
+- [x] Will automatically set up the tunnel server and print the commands that the client needs to execute
 - [x] Setting up the IPV6 tunnel is easy to understand and easy to remove
 
 ## Environmental Preparation
