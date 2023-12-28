@@ -53,7 +53,7 @@ curl -L https://raw.githubusercontent.com/oneclickvirt/6in4/main/6in4.sh -o 6in4
 
 为防止忘记重启后服务器隧道消失，服务端要执行的命令本身也将写入到当前路径下的```6in4_server.log```文件中，可使用```cat 6in4_server.log```查询服务端重启后重新部署隧道需要执行的命令
 
-由于部分服务器存在默认的内网IPV6路由会与隧道冲突，此时可使用以下命令删除默认的IPV6路由
+由于部分服务器存在默认的内网IPV6路由会与隧道冲突，此时可使用以下命令删除默认的IPV6路由。(以下命令仅限于你附加时出现报错且附加失败时才执行，否则不要轻易执行以下命令。)
 
 ```
 default_route=$(ip -6 route show | awk '/default via/{print $3}') && [ -n "$default_route" ] && ip -6 route del default via $default_route dev eth0
