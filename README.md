@@ -53,7 +53,7 @@ To prevent forgetting to copy commands, the commands to be executed by the clien
 
 To prevent forgetting that the server tunnel disappears after reboot, the commands to be executed by the server itself will be written to the ```6in4_server.log``` file under the current path, you can use ```cat 6in4_server.log``` to query the commands that need to be executed by the server to redeploy the tunnel after reboot.
 
-Because some servers have default intranet IPV6 routes that conflict with the tunnel, you can use the following command to remove the default IPV6 routes
+Because some servers have default intranet IPV6 routes that conflict with the tunnel, you can use the following command to remove the default IPV6 routes.(The following commands should only be executed if you get an error message when attaching and the attachment fails, otherwise do not execute the following commands lightly.)
 
 ```
 default_route=$(ip -6 route show | awk '/default via/{print $3}') && [ -n "$default_route" ] && ip -6 route del default via $default_route dev eth0
