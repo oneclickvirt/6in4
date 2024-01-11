@@ -4,5 +4,5 @@ curl -L https://raw.githubusercontent.com/oneclickvirt/6in4/main/covert.sh -o co
 ```
 
 ```
-curl -L https://raw.githubusercontent.com/oneclickvirt/6in4/main/test.sh -o test.sh && chmod +x test.sh
+curl -L https://raw.githubusercontent.com/oneclickvirt/6in4/main/back/test.sh -o test.sh && chmod +x test.sh
 ```
