@@ -38,6 +38,10 @@ curl -L https://raw.githubusercontent.com/oneclickvirt/6in4/main/6in4.sh -o 6in4
 ./6in4.sh client_ipv4 <mode_type> <subnet_size> 
 ```
 
+可重复执行，切分多个子网，对应不同的客户端(服务器)，```client_ipv4```为必填项，其他为可选项
+
+记得```client_ipv4```替换为需要附加IPV6的机器的IPV4地址，执行完毕后会回传你需要在客户端执行的命令，详见执行后的说明即可
+
 | 选项 | 可选的选项1 | 可选的选项2 | 可选的选项3 |
 |--------|--------|--------|--------|
 | <mode_type> | gre | sit | ipip |
@@ -45,11 +49,11 @@ curl -L https://raw.githubusercontent.com/oneclickvirt/6in4/main/6in4.sh -o 6in4
 
 ```<mode_type>```暂时只支持那三种协议，越靠前的越推荐，不填则默认为```sit```协议
 
-```<subnet_size>```只要比原系统子网掩码大就行，且是8的倍数，不填则默认为```80```
+```<subnet_size>```只要比原系统子网掩码大就行，且是8的倍数，若切分子网和原始子网大小差值大于2的16次方，会自动调整，不填则默认为```80```
 
-记得```client_ipv4```替换为需要附加IPV6的机器的IPV4地址，执行完毕后会回传你需要在客户端执行的命令，详见执行后的说明即可
+脚本执行过程中，执行路径将自动切换至于```/root```下
 
-为防止忘记复制命令，客户端要执行的命令本身也将写入到当前路径下的```6in4.log```文件中，可使用```cat 6in4.log```查询客户端需要执行的命令
+为防止忘记复制命令，客户端要执行的命令本身也将写入到当前路径下的```6in4_client.log```文件中，可使用```cat 6in4_client.log```查询客户端需要执行的命令
 
 为防止忘记重启后服务器隧道消失，服务端要执行的命令本身也将写入到当前路径下的```6in4_server.log```文件中，可使用```cat 6in4_server.log```查询服务端重启后重新部署隧道需要执行的命令
 
@@ -85,10 +89,20 @@ curl ipv6.ip.sb
 
 服务端
 
+执行
+
 ```
-ip link set server-ipv6 down
-ip tunnel del server-ipv6
+cat /root/6in4_server.log
 ```
+
+可查看使用的隧道名字，以```server-ipv6-```开头
+
+```
+ip link set <name> down
+ip tunnel del <name>
+```
+
+将上面的```<name>```改为查询到的名字即可
 
 客户端
 

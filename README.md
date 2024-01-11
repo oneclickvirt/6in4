@@ -38,6 +38,10 @@ Execute it
 ./6in4.sh client_ipv4 <mode_type> <subnet_size> 
 ```
 
+Repeatable, split into multiple subnets, corresponding to different clients (servers), ```client_ipv4``` is required, others are optional
+
+Remember to replace ```client_ipv4``` with the IPV4 address of the machine you want to attach IPV6 to, and the command you need to execute on the client side will be sent back to you after execution, see the instructions after execution for details.
+
 | Options | Optional Option 1 | Optional Option 2 | Optional Option 3 |
 |--------|--------|--------|--------|
 | <mode_type> | gre | sit | ipip |
@@ -45,9 +49,9 @@ Execute it
 
 ```<mode_type>``` only support those three protocols for now, the more advanced the more recommended, no fill in the default is ```sit``` protocol
 
-```<subnet_size>``` as long as it is larger than the original system subnet mask, and is a multiple of 8, if you don't fill it in, it defaults to ```80```.
+```<subnet_size>``` As long as it is larger than the original system subnet mask, and is a multiple of 8, if the difference between the cut subnet and the original subnet size is greater than 2 to the 16th power, it will be automatically adjusted, if you do not fill in the default is ```80```.
 
-Remember to replace ```client_ipv4``` with the IPV4 address of the machine you want to attach IPV6 to, and the command you need to execute on the client side will be sent back to you after execution, see the instructions after execution for details.
+During script execution, the execution path is automatically switched to ```/root```.
 
 To prevent forgetting to copy commands, the commands to be executed by the client itself will be written to the ```6in4.log``` file under the current path, and the commands to be executed by the client can be queried using ```cat 6in4.log```.
 
@@ -85,10 +89,20 @@ curl ipv6.ip.sb
 
 server
 
+exclude
+
 ```
-ip link set server-ipv6 down
-ip tunnel del server-ipv6
+cat /root/6in4_server.log
 ```
+
+You can view the name of the tunnel used, starting with ```server-ipv6-```.
+
+```
+ip link set <name> down
+ip tunnel del <name>
+```
+
+Just replace the ```<name>``` above with the name you looked up.
 
 client
 

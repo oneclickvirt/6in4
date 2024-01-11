@@ -1,7 +1,7 @@
 #!/bin/bash
 # from
 # https://github.com/oneclickvirt/6in4
-# 2023.10.28
+# 2024.01.11
 
 cd /root >/dev/null 2>&1
 _red() { echo -e "\033[31m\033[01m$@\033[0m"; }
@@ -306,8 +306,21 @@ ipv6_tunnel() {
     if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gateway" ] && [ ! -z "$ipv6_address_without_last_segment" ] && [ ! -z "$interface" ] && [ ! -z "$ipv4_address" ] && [ ! -z "$ipv4_prefixlen" ] && [ ! -z "$ipv4_gateway" ] && [ ! -z "$ipv4_subnet" ]; then
         # 获取宿主机IPV6上指定大小分区的第二个子网(因为第一个子网将包含宿主机本来就绑定了的IPV6地址)的起始IPV6地址0000结尾那个
         # echo "sipcalc --v6split=${target_mask} ${ipv6_address}/${ipv6_prefixlen} | awk '/Network/{n++} n==2' | awk '{print $3}' | grep -v '^$'"
-        ipv6_subnet_2=$(sipcalc --v6split=${target_mask} ${ipv6_address}/${ipv6_prefixlen} | awk '/Network/{n++} n==2' | awk '{print $3}' | grep -v '^$')
+        if [ ! -f /usr/local/bin/6in4_usable_subnets ]; then
+            sipcalc --v6split=${target_mask} ${ipv6_address}/${ipv6_prefixlen} > /usr/local/bin/6in4_usable_subnets
+            sed -i '1,5d' /usr/local/bin/6in4_usable_subnets
+            head -n -2 /usr/local/bin/6in4_usable_subnets > temp.text
+            mv temp.text /usr/local/bin/6in4_usable_subnets
+        fi
+        ipv6_subnets_usable_num=$(cat /usr/local/bin/6in4_usable_subnets | grep "^Network" | wc -l)
+        _blue "The number of ${target_mask} subnets available: ${ipv6_subnets_usable_num}"
+        ipv6_subnet_2=$(cat /usr/local/bin/6in4_usable_subnets | head -n 2 | awk '{print $3}' | grep -v '^$')
         # ipv6_subnet_2=$( sipcalc --v6split=64 2001:db8::/48 | awk '/Network/{n++} n==2' | awk '{print $3}' | grep -v '^$' )
+        # 使用过的子网不删除未使用记录，记录到已使用文件中
+        cat /usr/local/bin/6in4_usable_subnets | head -n 2 | tee -a /usr/local/bin/6in4_used_subnets
+        sed -i '1,2d' /usr/local/bin/6in4_usable_subnets
+        ipv6_subnets_used_num=$(cat /usr/local/bin/6in4_used_subnets | grep "^Network" | wc -l)
+        _blue "The number of ${target_mask} subnets used: ${ipv6_subnets_used_num}"
         # 切除最后4位地址(切除0000)，只保留前缀方便后续处理
         ipv6_subnet_2_without_last_segment="${ipv6_subnet_2%:*}:"
         if [ -n "$ipv6_subnet_2_without_last_segment" ]; then
@@ -318,53 +331,58 @@ ipv6_tunnel() {
             exit 1
         fi
 
-        _blue "ip tunnel add server-ipv6 mode ${tunnel_mode} remote ${target_address} local ${main_ipv4} ttl 255"
-        _blue "ip link set server-ipv6 up"
-        _blue "ip addr add ${ipv6_subnet_2_without_last_segment}1/${target_mask} dev server-ipv6"
-        _blue "ip route add ${ipv6_subnet_2_without_last_segment}/${target_mask} dev server-ipv6"
+        _blue "ip tunnel add server-ipv6-${ipv6_subnets_used_num} mode ${tunnel_mode} remote ${target_address} local ${main_ipv4} ttl 255"
+        _blue "ip link set server-ipv6-${ipv6_subnets_used_num} up"
+        _blue "ip addr add ${ipv6_subnet_2_without_last_segment}1/${target_mask} dev server-ipv6-${ipv6_subnets_used_num}"
+        _blue "ip route add ${ipv6_subnet_2_without_last_segment}/${target_mask} dev server-ipv6-${ipv6_subnets_used_num}"
 
-        ip tunnel add server-ipv6 mode ${tunnel_mode} remote ${target_address} local ${main_ipv4} ttl 255
-        ip link set server-ipv6 up
-        ip addr add ${ipv6_subnet_2_without_last_segment}1/${target_mask} dev server-ipv6
-        ip route add ${ipv6_subnet_2_without_last_segment}/${target_mask} dev server-ipv6
+        ip tunnel add server-ipv6-${ipv6_subnets_used_num} mode ${tunnel_mode} remote ${target_address} local ${main_ipv4} ttl 255
+        ip link set server-ipv6-${ipv6_subnets_used_num} up
+        ip addr add ${ipv6_subnet_2_without_last_segment}1/${target_mask} dev server-ipv6-${ipv6_subnets_used_num}
+        ip route add ${ipv6_subnet_2_without_last_segment}/${target_mask} dev server-ipv6-${ipv6_subnets_used_num}
         update_sysctl "net.ipv6.conf.all.forwarding=1"
         sysctl_path=$(which sysctl)
         ${sysctl_path} -p
         
-        rm -rf 6in4_server.log
-        touch 6in4_server.log
-        echo "ip tunnel add server-ipv6 mode ${tunnel_mode} remote ${target_address} local ${main_ipv4} ttl 255" >>6in4_server.log
-        echo "ip link set server-ipv6 up" >>6in4.log
-        echo "ip addr add ${ipv6_subnet_2_without_last_segment}1/${target_mask} dev server-ipv6" >>6in4_server.log
-        echo "ip route add ${ipv6_subnet_2_without_last_segment}/${target_mask} dev server-ipv6" >>6in4_server.log
-
+        # rm -rf 6in4_server.log
+        # touch 6in4_server.log
+        echo "# server tunnel name: server-ipv6-${ipv6_subnets_used_num}" >>6in4_server.log
+        echo "# server ipv4: ${main_ipv4}" >>6in4_server.log
+        echo "# client ipv4: ${target_address}" >>6in4_server.log
+        echo "# ipv6 subnet: ${ipv6_subnet_2_without_last_segment}1/${target_mask}" >>6in4_server.log
+        echo "ip tunnel add server-ipv6-${ipv6_subnets_used_num} mode ${tunnel_mode} remote ${target_address} local ${main_ipv4} ttl 255" >>6in4_server.log
+        echo "ip link set server-ipv6-${ipv6_subnets_used_num} up" >>6in4_server.log
+        echo "ip addr add ${ipv6_subnet_2_without_last_segment}1/${target_mask} dev server-ipv6-${ipv6_subnets_used_num}" >>6in4_server.log
+        echo "ip route add ${ipv6_subnet_2_without_last_segment}/${target_mask} dev server-ipv6-${ipv6_subnets_used_num}" >>6in4_server.log
+        echo "-----------------------------------------------------------------------------------------------" >>6in4_server.log
         update_sysctl "net.ipv6.conf.all.forwarding=1"
         update_sysctl "net.ipv6.conf.all.proxy_ndp=1"
         update_sysctl "net.ipv6.conf.default.proxy_ndp=1"
         update_sysctl "net.ipv6.conf.${interface}.proxy_ndp=1"
-        update_sysctl "net.ipv6.conf.server-ipv6.proxy_ndp=1"
+        update_sysctl "net.ipv6.conf.server-ipv6-${ipv6_subnets_used_num}.proxy_ndp=1"
         update_sysctl "net.ipv6.conf.all.accept_ra=2"
         $sysctl_path -p
-
-        if [ "$system_arch" = "x86" ]; then
-            wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_x86/ndpresponder -O /usr/local/bin/ndpresponder
-            wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
-            chmod 777 /usr/local/bin/ndpresponder
-            chmod 777 /etc/systemd/system/ndpresponder.service
-        elif [ "$system_arch" = "arch" ]; then
-            wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_aarch64/ndpresponder -O /usr/local/bin/ndpresponder
-            wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
-            chmod 777 /usr/local/bin/ndpresponder
-            chmod 777 /etc/systemd/system/ndpresponder.service
-        fi
-        if [ -f "/usr/local/bin/ndpresponder" ]; then
-            new_exec_start="ExecStart=/usr/local/bin/ndpresponder -i ${interface} -n ${ipv6_address_without_last_segment}/${ipv6_prefixlen}"
-            file_path="/etc/systemd/system/ndpresponder.service"
-            line_number=6
-            sed -i "${line_number}s|.*|${new_exec_start}|" "$file_path"
-            systemctl start ndpresponder
-            systemctl enable ndpresponder
-            systemctl status ndpresponder 2>/dev/null
+        if [ ! -f /usr/local/bin/ndpresponder ] && [ ! -f /etc/systemd/system/ndpresponder.service ]; then
+            if [ "$system_arch" = "x86" ]; then
+                wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_x86/ndpresponder -O /usr/local/bin/ndpresponder
+                wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
+                chmod 777 /usr/local/bin/ndpresponder
+                chmod 777 /etc/systemd/system/ndpresponder.service
+            elif [ "$system_arch" = "arch" ]; then
+                wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_aarch64/ndpresponder -O /usr/local/bin/ndpresponder
+                wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
+                chmod 777 /usr/local/bin/ndpresponder
+                chmod 777 /etc/systemd/system/ndpresponder.service
+            fi
+            if [ -f "/usr/local/bin/ndpresponder" ]; then
+                new_exec_start="ExecStart=/usr/local/bin/ndpresponder -i ${interface} -n ${ipv6_address_without_last_segment}/${ipv6_prefixlen}"
+                file_path="/etc/systemd/system/ndpresponder.service"
+                line_number=6
+                sed -i "${line_number}s|.*|${new_exec_start}|" "$file_path"
+                systemctl start ndpresponder
+                systemctl enable ndpresponder
+                systemctl status ndpresponder 2>/dev/null
+            fi
         fi
         _yellow "This tunnel will use ${tunnel_mode} type"
         _yellow "这个通道将使用${tunnel_mode}类型"
@@ -376,12 +394,16 @@ ipv6_tunnel() {
         _blue "ip link set user-ipv6 up"
         _blue "ip addr add ${ipv6_subnet_2_without_last_segment}2/${target_mask} dev user-ipv6"
         _blue "ip route add ::/0 dev user-ipv6"
-        rm -rf 6in4.log
-        touch 6in4.log
-        echo "ip tunnel add user-ipv6 mode ${tunnel_mode} remote ${main_ipv4} local ${target_address} ttl 255" >>6in4.log
-        echo "ip link set user-ipv6 up" >>6in4.log
-        echo "ip addr add ${ipv6_subnet_2_without_last_segment}2/${target_mask} dev user-ipv6" >>6in4.log
-        echo "ip route add ::/0 dev user-ipv6" >>6in4.log
+        # rm -rf 6in4_client.log
+        # touch 6in4_client.log
+        echo "# server ipv4: ${main_ipv4}" >>6in4_client.log
+        echo "# client ipv4: ${target_address}" >>6in4_client.log
+        echo "# ipv6 subnet: ${ipv6_subnet_2_without_last_segment}2/${target_mask}" >>6in4_client.log
+        echo "ip tunnel add user-ipv6 mode ${tunnel_mode} remote ${main_ipv4} local ${target_address} ttl 255" >>6in4_client.log
+        echo "ip link set user-ipv6 up" >>6in4_client.log
+        echo "ip addr add ${ipv6_subnet_2_without_last_segment}2/${target_mask} dev user-ipv6" >>6in4_client.log
+        echo "ip route add ::/0 dev user-ipv6" >>6in4_client.log
+        echo "-----------------------------------------------------------------------------------------------" >>6in4_client.log
     fi
 }
 
@@ -411,12 +433,19 @@ else
     _yellow "${tunnel_mode} 协议不符合规则"
     exit 1
 fi
-
 if [ ! -d /usr/local/bin ]; then
     mkdir -p /usr/local/bin
 fi
 statistics_of_run-times
 _green "脚本当天运行次数:${TODAY}，累计运行次数:${TOTAL}"
+if [ -f /usr/local/bin/6in4_usable_subnets ]; then
+    ipv6_subnets_usable_num=$(cat /usr/local/bin/6in4_usable_subnets | grep "^Network" | wc -l)
+    _blue "The number of ${target_mask} subnets available: ${ipv6_subnets_usable_num}"
+fi
+if [ -f /usr/local/bin/6in4_used_subnets ]; then
+    ipv6_subnets_used_num=$(cat /usr/local/bin/6in4_used_subnets | grep "^Network" | wc -l)
+    _blue "The number of ${target_mask} subnets used: ${ipv6_subnets_used_num}"
+fi
 check_update
 if ! command -v sudo >/dev/null 2>&1; then
     _yellow "Installing sudo"
