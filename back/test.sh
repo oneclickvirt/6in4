@@ -314,7 +314,7 @@ ipv6_tunnel() {
         fi
         ipv6_subnets_usable_num=$(cat /usr/local/bin/6in4_usable_subnets | grep "^Network" | wc -l)
         _blue "The number of ${target_mask} subnets available: ${ipv6_subnets_usable_num}"
-        ipv6_subnet_2=$(cat /usr/local/bin/6in4_usable_subnets | awk '{print $3}' | grep -v '^$')
+        ipv6_subnet_2=$(cat /usr/local/bin/6in4_usable_subnets | head -n 2 | awk '{print $3}' | grep -v '^$')
         # ipv6_subnet_2=$( sipcalc --v6split=64 2001:db8::/48 | awk '/Network/{n++} n==2' | awk '{print $3}' | grep -v '^$' )
         # 使用过的子网不删除未使用记录，记录到已使用文件中
         cat /usr/local/bin/6in4_usable_subnets | head -n 2 | tee -a /usr/local/bin/6in4_used_subnets
