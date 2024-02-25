@@ -1,7 +1,7 @@
 #!/bin/bash
 # from
 # https://github.com/oneclickvirt/6in4
-# 2024.01.11
+# 2024.02.25
 
 cd /root >/dev/null 2>&1
 _red() { echo -e "\033[31m\033[01m$@\033[0m"; }
@@ -303,6 +303,15 @@ ipv6_tunnel() {
             tunnel_mode="sit"
         fi
     fi
+    echo "ipv6_address: $ipv6_address"
+    echo "ipv6_prefixlen: $ipv6_prefixlen"
+    echo "ipv6_gateway: $ipv6_gateway"
+    echo "ipv6_address_without_last_segment: $ipv6_address_without_last_segment"
+    echo "interface: $interface" 
+    echo "ipv4_address: $ipv4_address" 
+    echo "ipv4_prefixlen: $ipv4_prefixlen" 
+    echo "ipv4_gateway: $ipv4_gateway" 
+    echo "ipv4_subnet: $ipv4_subnet"
     if [ ! -z "$ipv6_address" ] && [ ! -z "$ipv6_prefixlen" ] && [ ! -z "$ipv6_gateway" ] && [ ! -z "$ipv6_address_without_last_segment" ] && [ ! -z "$interface" ] && [ ! -z "$ipv4_address" ] && [ ! -z "$ipv4_prefixlen" ] && [ ! -z "$ipv4_gateway" ] && [ ! -z "$ipv4_subnet" ]; then
         # 获取宿主机IPV6上指定大小分区的第二个子网(因为第一个子网将包含宿主机本来就绑定了的IPV6地址)的起始IPV6地址0000结尾那个
         # echo "sipcalc --v6split=${target_mask} ${ipv6_address}/${ipv6_prefixlen} | awk '/Network/{n++} n==2' | awk '{print $3}' | grep -v '^$'"
