@@ -57,13 +57,19 @@ curl -L https://raw.githubusercontent.com/oneclickvirt/6in4/main/6in4.sh -o 6in4
 
 为防止忘记重启后服务器隧道消失，服务端要执行的命令本身也将写入到当前路径下的```6in4_server.log```文件中，可使用```cat 6in4_server.log```查询服务端重启后重新部署隧道需要执行的命令
 
-由于部分服务器存在默认的内网IPV6路由会与隧道冲突，此时可使用以下命令删除默认的IPV6路由。(以下命令仅限于你附加时出现报错且附加失败时才执行，否则不要轻易执行以下命令。)
+## 注意
+
+1. 由于部分服务器存在默认的内网IPV6路由会与隧道冲突，此时可使用以下命令删除默认的IPV6路由。(以下命令仅限于你附加时出现报错且附加失败时才执行，否则不要轻易执行以下命令。)
 
 ```
 default_route=$(ip -6 route show | awk '/default via/{print $3}') && [ -n "$default_route" ] && ip -6 route del default via $default_route dev eth0
 ```
 
 这里假设了你的客户端的服务器的默认网卡是```eth0```，你可以使用```ip -6 route```查看默认的路由并替换它，默认路由以```default via```开头，使用```dev```指定默认网卡，你只需要按照这个规则找到它即可
+
+2. 脚本默认不兼容多网络接口的情况，遇到执行日志出现```ipv6_gateway:```后识无输出的情况，你需要执行```ip -6 route show```查看ipv6的gateway地址后自行写入到文件```/usr/local/bin/6in4_ipv6_gateway```中，然后再次执行脚本即可。
+
+一个实际的例子：https://github.com/oneclickvirt/6in4/issues/2
 
 ## 检测服务端
 
