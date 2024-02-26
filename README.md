@@ -59,7 +59,9 @@ To prevent forgetting that the server tunnel disappears after reboot, the comman
 
 ## Attention
 
-1. Because some servers have default intranet IPV6 routes that conflict with the tunnel, you can use the following command to remove the default IPV6 routes.(The following commands should only be executed if you get an error when attaching and the attachment fails, otherwise do not execute the following commands lightly.)
+### Tunnel Route Conflicts with Default Route
+
+Because some servers have default intranet IPV6 routes that conflict with the tunnel, you can use the following command to remove the default IPV6 routes.(The following commands should only be executed if you get an error when attaching and the attachment fails, otherwise do not execute the following commands lightly.)
 
 ```
 default_route=$(ip -6 route show | awk '/default via/{print $3}') && [ -n "$default_route" ] && ip -6 route del default via $default_route dev eth0
@@ -67,7 +69,9 @@ default_route=$(ip -6 route show | awk '/default via/{print $3}') && [ -n "$defa
 
 This assumes that your client's server's default NIC is ```eth0```, and you can use ```ip -6 route``` to see the default route and replace it, the default route starts with ``default via`` and uses ``dev`` to specify the default NIC, you just need to find it by following this rule.
 
-2. The script is not compatible with multiple network interfaces by default, in case of no output after ```ipv6_gateway:``` appears in the execution log, you need to execute ```ip -6 route show``` to check the gateway address of ipv6 and then write it to the file ```/usr/local/bin/6in4_ipv6_gateway``` by yourself and then run the script again.
+### Host Multi-Network Interface
+
+The script is not compatible with multiple network interfaces by default, in case of no output after ```ipv6_gateway:``` appears in the execution log, you need to execute ```ip -6 route show``` to check the gateway address of ipv6 and then write it to the file ```/usr/local/bin/6in4_ipv6_gateway``` by yourself and then run the script again.
 
 A practical example: https://github.com/oneclickvirt/6in4/issues/2
 
