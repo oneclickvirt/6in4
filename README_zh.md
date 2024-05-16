@@ -35,7 +35,7 @@ curl -L https://raw.githubusercontent.com/oneclickvirt/6in4/main/6in4.sh -o 6in4
 执行命令
 
 ```
-./6in4.sh client_ipv4 <mode_type> <subnet_size> 
+./6in4.sh <client_ipv4> <mode_type> <subnet_size> 
 ```
 
 可重复执行，切分多个子网，对应不同的客户端(服务器)，```client_ipv4```为必填项，其他为可选项
@@ -45,6 +45,9 @@ curl -L https://raw.githubusercontent.com/oneclickvirt/6in4/main/6in4.sh -o 6in4
 | 选项 | 可选的选项1 | 可选的选项2 | 可选的选项3 |
 |--------|--------|--------|--------|
 | <mode_type> | gre | sit | ipip |
+
+| 选项 | 可选的选项1 | 可选的选项2 | 可选的选项3 |
+|--------|--------|--------|--------|
 | <subnet_size> | 64 | 80 | 112 |
 
 ```<mode_type>```暂时只支持那三种协议，越靠前的越推荐，不填则默认为```sit```协议
