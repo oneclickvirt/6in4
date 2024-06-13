@@ -339,16 +339,16 @@ ipv6_tunnel() {
         $sysctl_path -p
 
         if [ "$system_arch" = "x86" ]; then
-            wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_x86/ndpresponder -O /usr/local/bin/ndpresponder
-            wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
+            wget ${cdn_success_url}https://github.com/oneclickvirt/pve/releases/download/ndpresponder_x86/ndpresponder -O /usr/local/bin/ndpresponder
+            wget ${cdn_success_url}https://raw.githubusercontent.com/oneclickvirt/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
             chmod 777 /usr/local/bin/ndpresponder
             chmod 777 /etc/systemd/system/ndpresponder.service
             systemctl start ndpresponder
             systemctl enable ndpresponder
             systemctl status ndpresponder 2>/dev/null
         elif [ "$system_arch" = "arch" ]; then
-            wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_aarch64/ndpresponder -O /usr/local/bin/ndpresponder
-            wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
+            wget ${cdn_success_url}https://github.com/oneclickvirt/pve/releases/download/ndpresponder_aarch64/ndpresponder -O /usr/local/bin/ndpresponder
+            wget ${cdn_success_url}https://raw.githubusercontent.com/oneclickvirt/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
             chmod 777 /usr/local/bin/ndpresponder
             chmod 777 /etc/systemd/system/ndpresponder.service
             systemctl start ndpresponder

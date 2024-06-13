@@ -1,7 +1,7 @@
 #!/bin/bash
 # from
 # https://github.com/oneclickvirt/6in4
-# 2024.02.25
+# 2024.06.13
 
 cd /root >/dev/null 2>&1
 _red() { echo -e "\033[31m\033[01m$@\033[0m"; }
@@ -373,13 +373,13 @@ ipv6_tunnel() {
         $sysctl_path -p
         if [ ! -f /usr/local/bin/ndpresponder ] && [ ! -f /etc/systemd/system/ndpresponder.service ]; then
             if [ "$system_arch" = "x86" ]; then
-                wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_x86/ndpresponder -O /usr/local/bin/ndpresponder
-                wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
+                wget ${cdn_success_url}https://github.com/oneclickvirt/pve/releases/download/ndpresponder_x86/ndpresponder -O /usr/local/bin/ndpresponder
+                wget ${cdn_success_url}https://raw.githubusercontent.com/oneclickvirt/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
                 chmod 777 /usr/local/bin/ndpresponder
                 chmod 777 /etc/systemd/system/ndpresponder.service
             elif [ "$system_arch" = "arch" ]; then
-                wget ${cdn_success_url}https://github.com/spiritLHLS/pve/releases/download/ndpresponder_aarch64/ndpresponder -O /usr/local/bin/ndpresponder
-                wget ${cdn_success_url}https://raw.githubusercontent.com/spiritLHLS/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
+                wget ${cdn_success_url}https://github.com/oneclickvirt/pve/releases/download/ndpresponder_aarch64/ndpresponder -O /usr/local/bin/ndpresponder
+                wget ${cdn_success_url}https://raw.githubusercontent.com/oneclickvirt/pve/main/extra_scripts/ndpresponder.service -O /etc/systemd/system/ndpresponder.service
                 chmod 777 /usr/local/bin/ndpresponder
                 chmod 777 /etc/systemd/system/ndpresponder.service
             fi
