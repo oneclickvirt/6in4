@@ -1,7 +1,7 @@
 #!/bin/bash
 # from
 # https://github.com/oneclickvirt/6in4
-# 2024.06.13
+# 2024.12.21
 
 cd /root >/dev/null 2>&1
 _red() { echo -e "\033[31m\033[01m$@\033[0m"; }
@@ -281,10 +281,31 @@ calculate_subnets() {
     local total_prefix
     total_prefix=$1
     subnet_prefix=$2
+    # 检查前缀范围是否有效
+    if [ $total_prefix -lt 0 ] || [ $total_prefix -gt 128 ]; then
+        _red "错误：IPv6 总前缀长度必须在 0-128 之间"
+        _red "Error: IPv6 total prefix length must be between 0-128"
+        return 1
+    fi
+    if [ $subnet_prefix -lt 0 ] || [ $subnet_prefix -gt 128 ]; then
+        _red "错误：IPv6 子网前缀长度必须在 0-128 之间"
+        _red "Error: IPv6 subnet prefix length must be between 0-128"
+        return 1
+    fi
+    # 确保子网前缀大于总前缀
+    if [ $subnet_prefix -lt $total_prefix ]; then
+        _red "错误：子网前缀长度必须大于或等于总前缀长度"
+        _red "Error: Subnet prefix length must be greater than or equal to total prefix length"
+        return 1
+    }
+    # 计算子网差值
     subnets=$(($subnet_prefix - $total_prefix))
+    # 如果差值过大，调整子网前缀
     if [ $subnets -gt 16 ]; then
         subnet_prefix=${total_prefix}
         ((subnet_prefix += 8 - ($total_prefix % 8)))
+        _yellow "子网前缀已调整为: /${subnet_prefix}"
+        _yellow "Subnet prefix adjusted to: /${subnet_prefix}"
     fi
     echo "$subnet_prefix"
 }
@@ -564,13 +585,16 @@ ipv6_address_without_last_segment="${ipv6_address%:*}:"
 ipv6_prefixlen=$(cat /usr/local/bin/6in4_ipv6_prefixlen)
 ipv6_gateway=$(cat /usr/local/bin/6in4_ipv6_gateway)
 fe80_address=$(cat /usr/local/bin/6in4_fe80_address)
-# 防止切分的子网过小算不出来
-target_mask_temp=$(calculate_subnets $ipv6_prefixlen $target_mask)
+# 检查计算结果，防止切分的子网过小算不出来
+if ! target_mask_temp=$(calculate_subnets $ipv6_prefixlen $target_mask); then
+    exit 1
+fi
+# 只有在成功的情况下才继续
 if [ "$target_mask_temp" != "$target_mask" ]; then
     target_mask=${target_mask_temp}
+    _yellow "检测到切分子网和原始子网大小差值大于2的16次方，故而修改要切分子网为 /${target_mask}"
     _yellow "The difference between the size of the cut molecular net and the original subnet is detected to be greater than 2 to the 16th power"
-    _yellow "so the size of the molecular net to be cut is modified to be /$target_mask"
-    _yellow "检测到切分子网和原始子网大小差值大于2的16次方，故而修改要切分子网为 /$target_mask"
+    _yellow "so the size of the molecular net to be cut is modified to be /${target_mask}"
 fi
 # 正式映射
 _green "This step will take about 1 minute, please be patient."
