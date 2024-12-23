@@ -297,7 +297,7 @@ calculate_subnets() {
         _red "错误：子网前缀长度必须大于或等于总前缀长度"
         _red "Error: Subnet prefix length must be greater than or equal to total prefix length"
         return 1
-    }
+    fi
     # 计算子网差值
     subnets=$(($subnet_prefix - $total_prefix))
     # 如果差值过大，调整子网前缀
