@@ -2,6 +2,8 @@
 
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Foneclickvirt%2F6in4&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
 
+[<img src="https://api.gitsponsors.com/api/badge/img?id=709187855" height="20">](https://api.gitsponsors.com/api/badge/link?p=DOut5Mk0ka+EXrOSIV35o22sNT4kQ8NagB+XZs7+8C3ncTFR9KoAYkxPvZweAjAzvDMaye1fHrIgG/Mj3KYDTTwpSwEvuZZKnpvEL0gl3X9VgN6/j7XmB8QK6lPjsiyaRXLDSGWYzsa/rNWrKColIw==)
+
 One-click forwarding to migrate your IPV6 segments.
 
 [English](README.md) | [中文文档](README_zh.md)
