@@ -40,12 +40,11 @@ for ((int = 0; int < ${#REGEX[@]}; int++)); do
     fi
 done
 
-statistics_of_run-times() {
-    COUNT=$(
-        curl -4 -ksm1 "https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Foneclickvirt%2F6in4&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=&edge_flat=true" 2>&1 ||
-            curl -6 -ksm1 "https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Foneclickvirt%2F6in4&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=&edge_flat=true" 2>&1
-    ) &&
-        TODAY=$(expr "$COUNT" : '.*\s\([0-9]\{1,\}\)\s/.*') && TOTAL=$(expr "$COUNT" : '.*/\s\([0-9]\{1,\}\)\s.*')
+statistics_of_run_times() {
+    COUNT=$(curl -4 -ksm1 "https://hits.spiritlhl.net/6in4?action=hit&title=Hits&title_bg=%23555555&count_bg=%2324dde1&edge_flat=false" 2>/dev/null ||
+        curl -6 -ksm1 "https://hits.spiritlhl.net/6in4?action=hit&title=Hits&title_bg=%23555555&count_bg=%2324dde1&edge_flat=false" 2>/dev/null)
+    TODAY=$(echo "$COUNT" | grep -oP '"daily":\s*[0-9]+' | sed 's/"daily":\s*\([0-9]*\)/\1/')
+    TOTAL=$(echo "$COUNT" | grep -oP '"total":\s*[0-9]+' | sed 's/"total":\s*\([0-9]*\)/\1/')
 }
 
 check_update() {
@@ -466,7 +465,7 @@ fi
 if [ ! -d /usr/local/bin ]; then
     mkdir -p /usr/local/bin
 fi
-statistics_of_run-times
+statistics_of_run_times
 _green "脚本当天运行次数:${TODAY}，累计运行次数:${TOTAL}"
 if [ -f /usr/local/bin/6in4_usable_subnets ]; then
     ipv6_subnets_usable_num=$(cat /usr/local/bin/6in4_usable_subnets | grep "^Network" | wc -l)
