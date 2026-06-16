@@ -2,128 +2,190 @@
 
 [![Hits](https://hits.spiritlhl.net/6in4.svg?action=hit&title=Hits&title_bg=%23555555&count_bg=%230eecf8&edge_flat=false)](https://hits.spiritlhl.net)
 
-One-click forwarding to migrate your IPV6 segments.
+One-click IPv6-over-IPv4 tunnel creation for migrating routed IPv6 prefixes to another host.
 
 [English](README.md) | [中文文档](README_zh.md)
 
-Similar to https://tunnelbroker.net/ to build your own "Hurricane Electric Free IPv6 Tunnel Broker".
+This is similar to building your own lightweight "Hurricane Electric Free IPv6 Tunnel Broker".
 
 ## Features
 
-- [x] Self-built IPv6 tunnel for sit/gre/ipip protocols
-- [x] Support to customize the IPV6 subnet size to be cut out, and the appropriate IPV6 subnet information in CIDR format will be calculated automatically.
-- [x] Automatically recognizes the IPV6 subnet size of the server side
-- [x] Will automatically set up the tunnel server and print the commands that the client needs to execute
-- [x] Setting up the IPV6 tunnel is easy to understand and easy to remove
+- [x] Server-side IPv6 tunnels for `sit`, `gre`, and `ipip` on Linux
+- [x] BSD `gif(4)` support for IPv6-over-IPv4 through `sit` mode
+- [x] Strict IPv4 and IPv6 validation
+- [x] Automatic public interface and gateway detection with virtual/VPN tunnel filtering
+- [x] Persistent IPv6 subnet allocation records and subnet reuse after deletion
+- [x] Runtime state under `/var/lib/6in4`, logs under `/var/log/6in4`
+- [x] Locking with `flock` or a directory lock to prevent concurrent runs
+- [x] Tunnel MTU and TCP MSS calculation from the underlay interface MTU
+- [x] Post-create tunnel diagnostics and optional ping6 health check
+- [x] Verified `ndpresponder` downloads with SHA256 checksums on supported Linux architectures
+- [x] systemd, netplan, systemd-networkd, ifcfg, and BSD persistence templates
+- [x] Optional telemetry disable flag and environment variable
 
-## Environmental Preparation
+## Requirements
 
-| VPS(A) | VPS(B) |
-| --------|--------|
-| one IPV4 address (server_ipv4) | one IPV4 address (clinet_ipv4) |
-| one IPV6 subnet | no IPV6 address |
-| Hereafter referred to as server | Hereafter referred to as client |
+| Server | Client |
+| --- | --- |
+| One public IPv4 address | One public IPv4 address |
+| One globally routed IPv6 prefix | No native IPv6 is required |
+| Linux or BSD root shell | Linux root shell for the generated client commands |
+
+The main script installs missing project-level runtime dependencies with the system package manager when possible. Supported package managers include `apt`, `apk`, `pacman`, `dnf`, `yum`, `zypper`, FreeBSD `pkg`, and OpenBSD `pkg_add`.
 
 ## Usage
 
-Download Script
+Download:
 
-```
-curl -L https://raw.githubusercontent.com/oneclickvirt/6in4/main/6in4.sh -o 6in4.sh && chmod +x 6in4.sh
-```
-
-Execute it
-
-```
-./6in4.sh <client_ipv4> <mode_type> <subnet_size> 
+```bash
+curl -L https://raw.githubusercontent.com/oneclickvirt/6in4/main/6in4.sh -o 6in4.sh
+chmod +x 6in4.sh
 ```
 
-Repeatable, split into multiple subnets, corresponding to different clients (servers), ```client_ipv4``` is required, others are optional
+Run on the IPv6-capable server:
 
-Remember to replace ```client_ipv4``` with the IPV4 address of the machine you want to attach IPV6 to, and the command you need to execute on the client side will be sent back to you after execution, see the instructions after execution for details.
-
-| Options | Optional Option 1 | Optional Option 2 | Optional Option 3 |
-|--------|--------|--------|--------|
-| <mode_type> | gre | sit | ipip |
-
-| Options | Optional Option 1 | Optional Option 2 | Optional Option 3 |
-|--------|--------|--------|--------|
-| <subnet_size> | 64 | 80 | 112 |
-
-```<mode_type>``` only support those three protocols for now, the more advanced the more recommended, no fill in the default is ```sit``` protocol
-
-```<subnet_size>``` As long as it is larger than the original system subnet mask, and is a multiple of 8, if the difference between the cut subnet and the original subnet size is greater than 2 to the 16th power, it will be automatically adjusted, if you do not fill in the default is ```80```.
-
-During script execution, the execution path is automatically switched to ```/root```.
-
-To prevent forgetting to copy commands, the commands to be executed by the client itself will be written to the ```6in4_client.log``` file under the current path, and the commands to be executed by the client can be queried using ```cat 6in4_client.log```.
-
-To prevent forgetting that the server tunnel disappears after reboot, the commands to be executed by the server itself will be written to the ```6in4_server.log``` file under the current path, you can use ```cat 6in4_server.log``` to query the commands that need to be executed by the server to redeploy the tunnel after reboot.
-
-## Attention
-
-### Tunnel Route Conflicts with Default Route
-
-Because some servers have default intranet IPV6 routes that conflict with the tunnel, you can use the following command to remove the default IPV6 routes.(The following commands should only be executed if you get an error when attaching and the attachment fails, otherwise do not execute the following commands lightly.)
-
-```
-default_route=$(ip -6 route show | awk '/default via/{print $3}') && [ -n "$default_route" ] && ip -6 route del default via $default_route dev eth0
+```bash
+./6in4.sh <client_ipv4> [mode_type] [subnet_size]
 ```
 
-This assumes that your client's server's default NIC is ```eth0```, and you can use ```ip -6 route``` to see the default route and replace it, the default route starts with ``default via`` and uses ``dev`` to specify the default NIC, you just need to find it by following this rule.
+Examples:
 
-### Host Multi-Network Interface
-
-The script is not compatible with multiple network interfaces by default, in case of no output after ```ipv6_gateway:``` appears in the execution log, you need to execute ```ip -6 route show``` to check the gateway address of ipv6 and then write it to the file ```/usr/local/bin/6in4_ipv6_gateway``` by yourself and then run the script again.
-
-A practical example: https://github.com/oneclickvirt/6in4/issues/2
-
-## Check server status
-
-```
-systemctl status ndpresponder
+```bash
+./6in4.sh 203.0.113.10 sit 80
+./6in4.sh 203.0.113.10 gre 64 --no-telemetry
+./6in4.sh 203.0.113.10 sit 80 --interface eth0 --skip-health-check
 ```
 
+Options:
+
+| Option | Description |
+| --- | --- |
+| `mode_type` | `gre`, `sit`, or `ipip` on Linux. BSD uses `sit`, implemented with `gif(4)`. Default: `sit`. |
+| `subnet_size` | IPv6 subnet prefix length, such as `64`, `80`, or `112`. It must be greater than or equal to the server prefix and a multiple of 8. Default: `80`. |
+| `--interface <name>` | Force the server public interface. |
+| `--no-telemetry` | Disable the hits counter request. |
+| `--skip-health-check` | Skip the post-create ping6 check. |
+| `--no-persist` | Generate persistence files but do not enable the systemd unit automatically. |
+| `--skip-ndpresponder` | Skip ndpresponder installation/startup. Use only when NDP/proxying is handled another way. |
+| `--dry-run` | Run the allocation/log/persistence flow without root-only network changes. |
+
+Environment:
+
+| Variable | Description |
+| --- | --- |
+| `SIXIN4_STATE_DIR` | Runtime state directory. Default: `/var/lib/6in4`. |
+| `SIXIN4_LOG_DIR` | Log directory. Default: `/var/log/6in4`. |
+| `SIXIN4_NO_TELEMETRY=1` | Same as `--no-telemetry`. |
+| `SIXIN4_INTERFACE=<name>` | Same as `--interface <name>`. |
+| `SIXIN4_DRY_RUN=1` | Same as `--dry-run`. |
+| `CN=true` | Prefer a reachable GitHub CDN automatically. |
+
+Legacy `6IN4_*` names are still accepted when passed with `env`, for example `env 6IN4_STATE_DIR=/tmp/6in4 ./6in4.sh ...`. The `SIXIN4_*` aliases are preferred because they can be used directly in POSIX-style shell assignments.
+
+Dry-run test variables:
+
+```bash
+SIXIN4_OS_FAMILY=linux
+SIXIN4_INTERFACE=eth0
+SIXIN4_MAIN_IPV4=198.51.100.2
+SIXIN4_IPV4_CIDR=198.51.100.2/24
+SIXIN4_IPV4_GATEWAY=198.51.100.1
+SIXIN4_IPV6_CIDR=2001:470:64::1/64
+SIXIN4_IPV6_GATEWAY=fe80::1
+SIXIN4_UNDERLAY_MTU=1500
 ```
-ip addr show
+
+## State And Logs
+
+Runtime files are kept out of `/usr/local/bin`:
+
+```text
+/var/lib/6in4/allocations.tsv
+/var/lib/6in4/subnets_*.list
+/var/lib/6in4/persistent/<tunnel_name>/
+/var/log/6in4/6in4_server.log
+/var/log/6in4/6in4_client.log
 ```
 
-## Check client status
+Logs rotate automatically when they exceed 1 MiB by default. Override with `SIXIN4_LOG_MAX_BYTES` and `SIXIN4_LOG_KEEP`.
 
-```
-ip addr show
-```
+## Client Configuration
 
-```
-curl ipv6.ip.sb
-```
+After the server tunnel is created, the script prints the client commands and writes them to `/var/log/6in4/6in4_client.log`. It also generates client persistence templates under:
 
-## Delete tunnel
-
-server
-
-exclude
-
-```
-cat /root/6in4_server.log
+```text
+/var/lib/6in4/persistent/<tunnel_name>/
 ```
 
-You can view the name of the tunnel used, starting with ```server-ipv6-```.
+No passwords or private keys are generated by this project.
 
+## Delete Tunnel
+
+Download and run the cleanup script on the server:
+
+```bash
+curl -L https://raw.githubusercontent.com/oneclickvirt/6in4/main/6in4-delete.sh -o 6in4-delete.sh
+chmod +x 6in4-delete.sh
+./6in4-delete.sh --list
+./6in4-delete.sh <tunnel_name>
 ```
-ip link set <name> down
-ip tunnel del <name>
+
+Delete every active recorded tunnel:
+
+```bash
+./6in4-delete.sh --all
 ```
 
-Just replace the ```<name>``` above with the name you looked up.
+Deletion removes the kernel tunnel, disables the generated systemd service when present, and marks the allocation record as deleted so the subnet can be reused.
 
-client
+For non-destructive state-flow checks:
 
+```bash
+SIXIN4_STATE_DIR=/tmp/6in4-dry-run/state ./6in4-delete.sh --dry-run --all
 ```
+
+`--dry-run` only previews deletion. It does not remove persistence files or modify `allocations.tsv`.
+
+On the client:
+
+```bash
 ip link set user-ipv6 down
 ip tunnel del user-ipv6
 ```
 
-## Persistent tunnel
+## Persistence
 
-See [https://www.spiritlhl.net/en/guide/incus/incus_custom.html](https://www.spiritlhl.net/en/guide/incus/incus_custom.html) and [https://ipv6tunnel.spiritlhl.top/](https://ipv6tunnel.spiritlhl.top/) for more details
+For Linux, the script generates:
+
+- `server-up.sh` and `server-down.sh`
+- `6in4-<tunnel_name>.service`
+- `systemd-networkd-<tunnel_name>.netdev`
+- `systemd-networkd-<tunnel_name>.network`
+- `netplan-<tunnel_name>.yaml`
+- `ifcfg-<tunnel_name>`
+- client-side shell, systemd, and `client-install.sh` templates
+
+When systemd is available and `--no-persist` is not used, the server systemd unit is enabled automatically for reboot recovery. Netplan, systemd-networkd, ifcfg, and BSD files are generated as templates because installing them blindly can conflict with existing network managers.
+
+## Diagnostics
+
+Check the server:
+
+```bash
+ip addr show
+ip -6 route show
+systemctl status ndpresponder
+```
+
+Check the client:
+
+```bash
+ip addr show
+curl ipv6.ip.sb
+```
+
+The health check pings the generated client IPv6 address after server creation. It can fail until the client applies its tunnel configuration; the script prints tunnel, address, and route diagnostics in that case.
+
+## ifupdown Conversion Helper
+
+`covert.sh` converts `/etc/network/interfaces` tunnel syntax between `ifupdown` and `ifupdown2`. It now backs up the file, validates the converted configuration with `ifquery --check --all` or `ifup --no-act -a`, and restores the backup if validation or networking restart fails.

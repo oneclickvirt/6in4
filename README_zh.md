@@ -2,128 +2,190 @@
 
 [![Hits](https://hits.spiritlhl.net/6in4.svg?action=hit&title=Hits&title_bg=%23555555&count_bg=%230eecf8&edge_flat=false)](https://hits.spiritlhl.net)
 
-一键式转发迁移你的IPV6网段
+一键创建 IPv6-over-IPv4 隧道，将服务端已有的公网 IPv6 前缀分配给另一台主机使用。
 
 [English](README.md) | [中文文档](README_zh.md)
 
-类似 https://tunnelbroker.net/ 自建一个 "Hurricane Electric Free IPv6 Tunnel Broker"
+类似自建一个轻量版的 "Hurricane Electric Free IPv6 Tunnel Broker"。
 
 ## 功能
 
-- [x] 自建sit/gre/ipip协议的IPv6隧道
-- [x] 支持自定义要切分出来的IPV6子网大小，将自动计算出合适的CIDR格式的IPV6子网信息
-- [x] 自动识别服务端的IPV6子网大小
-- [x] 将自动设置隧道服务端并打印客户端需要执行的命令
-- [x] 设置IPV6隧道的方法简单易懂，易于删除
+- [x] Linux 服务端支持 `sit`、`gre`、`ipip` 隧道
+- [x] BSD 通过 `sit` 模式使用 `gif(4)` 实现 IPv6-over-IPv4
+- [x] 严格校验 IPv4 和 IPv6 地址
+- [x] 自动检测公网网卡和网关，并过滤虚拟/VPN/隧道接口
+- [x] 持久化记录 IPv6 子网分配，删除隧道后可回收子网
+- [x] 运行状态存储在 `/var/lib/6in4`，日志存储在 `/var/log/6in4`
+- [x] 使用 `flock` 或目录锁防止并发执行
+- [x] 根据底层网卡 MTU 自动计算隧道 MTU 和 TCP MSS
+- [x] 创建后执行隧道诊断和可选 ping6 健康检查
+- [x] 支持的 Linux 架构上下载 ndpresponder 时进行 SHA256 校验
+- [x] 生成 systemd、netplan、systemd-networkd、ifcfg 和 BSD 持久化模板
+- [x] 可通过参数或环境变量关闭 telemetry
 
 ## 环境准备
 
-| VPS(A) | VPS(B) |
-|--------|--------|
-| 一个IPV4地址(server_ipv4) | 一个IPV4地址(clinet_ipv4) |
-| 一个IPV6子网 | 无IPV6地址 |
-| 以下称之为服务端 | 以下称之为客户端 |
+| 服务端 | 客户端 |
+| --- | --- |
+| 一个公网 IPv4 地址 | 一个公网 IPv4 地址 |
+| 一个公网可路由 IPv6 前缀 | 不需要原生 IPv6 |
+| Linux 或 BSD root shell | 生成的客户端命令面向 Linux root shell |
+
+脚本会在可能时通过系统包管理器安装缺失依赖。支持的包管理器包括 `apt`、`apk`、`pacman`、`dnf`、`yum`、`zypper`、FreeBSD `pkg` 和 OpenBSD `pkg_add`。
 
 ## 使用方法
 
-下载脚本
+下载脚本：
 
-```
-curl -L https://raw.githubusercontent.com/oneclickvirt/6in4/main/6in4.sh -o 6in4.sh && chmod +x 6in4.sh
-```
-
-执行命令
-
-```
-./6in4.sh <client_ipv4> <mode_type> <subnet_size> 
+```bash
+curl -L https://raw.githubusercontent.com/oneclickvirt/6in4/main/6in4.sh -o 6in4.sh
+chmod +x 6in4.sh
 ```
 
-可重复执行，切分多个子网，对应不同的客户端(服务器)，```client_ipv4```为必填项，其他为可选项
+在拥有 IPv6 前缀的服务端执行：
 
-记得```client_ipv4```替换为需要附加IPV6的机器的IPV4地址，执行完毕后会回传你需要在客户端执行的命令，详见执行后的说明即可
-
-| 选项 | 可选的选项1 | 可选的选项2 | 可选的选项3 |
-|--------|--------|--------|--------|
-| <mode_type> | gre | sit | ipip |
-
-| 选项 | 可选的选项1 | 可选的选项2 | 可选的选项3 |
-|--------|--------|--------|--------|
-| <subnet_size> | 64 | 80 | 112 |
-
-```<mode_type>```暂时只支持那三种协议，越靠前的越推荐，不填则默认为```sit```协议
-
-```<subnet_size>```只要比原系统子网掩码大就行，且是8的倍数，若切分子网和原始子网大小差值大于2的16次方，会自动调整，不填则默认为```80```
-
-脚本执行过程中，执行路径将自动切换至于```/root```下
-
-为防止忘记复制命令，客户端要执行的命令本身也将写入到当前路径下的```6in4_client.log```文件中，可使用```cat 6in4_client.log```查询客户端需要执行的命令
-
-为防止忘记重启后服务器隧道消失，服务端要执行的命令本身也将写入到当前路径下的```6in4_server.log```文件中，可使用```cat 6in4_server.log```查询服务端重启后重新部署隧道需要执行的命令
-
-## 注意
-
-### 隧道路由与默认路由冲突
-
-由于部分服务器存在默认的内网IPV6路由会与隧道冲突，此时可使用以下命令删除默认的IPV6路由。(以下命令仅限于你附加时出现报错且附加失败时才执行，否则不要轻易执行以下命令。)
-
-```
-default_route=$(ip -6 route show | awk '/default via/{print $3}') && [ -n "$default_route" ] && ip -6 route del default via $default_route dev eth0
+```bash
+./6in4.sh <client_ipv4> [mode_type] [subnet_size]
 ```
 
-这里假设了你的客户端的服务器的默认网卡是```eth0```，你可以使用```ip -6 route```查看默认的路由并替换它，默认路由以```default via```开头，使用```dev```指定默认网卡，你只需要按照这个规则找到它即可
+示例：
 
-### 宿主机多网络接口
-
-脚本默认不兼容多网络接口的情况，遇到执行日志出现```ipv6_gateway:```后识无输出的情况，你需要执行```ip -6 route show```查看ipv6的gateway地址后自行写入到文件```/usr/local/bin/6in4_ipv6_gateway```中，然后再次执行脚本即可。
-
-一个实际的例子：https://github.com/oneclickvirt/6in4/issues/2
-
-## 检测服务端
-
-```
-systemctl status ndpresponder
+```bash
+./6in4.sh 203.0.113.10 sit 80
+./6in4.sh 203.0.113.10 gre 64 --no-telemetry
+./6in4.sh 203.0.113.10 sit 80 --interface eth0 --skip-health-check
 ```
 
-```
-ip addr show
+参数：
+
+| 参数 | 说明 |
+| --- | --- |
+| `mode_type` | Linux 支持 `gre`、`sit`、`ipip`。BSD 使用 `sit`，底层由 `gif(4)` 实现。默认：`sit`。 |
+| `subnet_size` | IPv6 子网前缀长度，如 `64`、`80`、`112`。必须大于或等于服务端前缀，且为 8 的倍数。默认：`80`。 |
+| `--interface <name>` | 指定服务端公网网卡。 |
+| `--no-telemetry` | 关闭 hits 统计请求。 |
+| `--skip-health-check` | 跳过创建后的 ping6 健康检查。 |
+| `--no-persist` | 生成持久化文件，但不自动启用 systemd 服务。 |
+| `--skip-ndpresponder` | 跳过 ndpresponder 安装和启动。仅在你已用其他方式处理 NDP/代理时使用。 |
+| `--dry-run` | 不执行 root 网络修改，仅跑通分配、日志和持久化模板流程。 |
+
+环境变量：
+
+| 变量 | 说明 |
+| --- | --- |
+| `SIXIN4_STATE_DIR` | 运行状态目录。默认：`/var/lib/6in4`。 |
+| `SIXIN4_LOG_DIR` | 日志目录。默认：`/var/log/6in4`。 |
+| `SIXIN4_NO_TELEMETRY=1` | 等同于 `--no-telemetry`。 |
+| `SIXIN4_INTERFACE=<name>` | 等同于 `--interface <name>`。 |
+| `SIXIN4_DRY_RUN=1` | 等同于 `--dry-run`。 |
+| `CN=true` | 自动优先选择可用的 GitHub CDN。 |
+
+旧版 `6IN4_*` 名称仍可通过 `env` 传入，例如 `env 6IN4_STATE_DIR=/tmp/6in4 ./6in4.sh ...`。建议使用 `SIXIN4_*` 别名，因为它们可以直接用于 POSIX 风格 shell 变量赋值。
+
+dry-run 测试变量：
+
+```bash
+SIXIN4_OS_FAMILY=linux
+SIXIN4_INTERFACE=eth0
+SIXIN4_MAIN_IPV4=198.51.100.2
+SIXIN4_IPV4_CIDR=198.51.100.2/24
+SIXIN4_IPV4_GATEWAY=198.51.100.1
+SIXIN4_IPV6_CIDR=2001:470:64::1/64
+SIXIN4_IPV6_GATEWAY=fe80::1
+SIXIN4_UNDERLAY_MTU=1500
 ```
 
-## 检测客户端
+## 状态和日志
 
-```
-ip addr show
+运行状态不再写入 `/usr/local/bin`：
+
+```text
+/var/lib/6in4/allocations.tsv
+/var/lib/6in4/subnets_*.list
+/var/lib/6in4/persistent/<tunnel_name>/
+/var/log/6in4/6in4_server.log
+/var/log/6in4/6in4_client.log
 ```
 
+日志默认超过 1 MiB 自动轮转。可通过 `SIXIN4_LOG_MAX_BYTES` 和 `SIXIN4_LOG_KEEP` 调整。
+
+## 客户端配置
+
+服务端隧道创建后，脚本会打印客户端命令，并写入 `/var/log/6in4/6in4_client.log`。客户端持久化模板会生成在：
+
+```text
+/var/lib/6in4/persistent/<tunnel_name>/
 ```
-curl ipv6.ip.sb
-```
+
+本项目不会生成密码或私钥。
 
 ## 删除隧道
 
-服务端
+在服务端下载并执行清理脚本：
 
-执行
-
-```
-cat /root/6in4_server.log
-```
-
-可查看使用的隧道名字，以```server-ipv6-```开头
-
-```
-ip link set <name> down
-ip tunnel del <name>
+```bash
+curl -L https://raw.githubusercontent.com/oneclickvirt/6in4/main/6in4-delete.sh -o 6in4-delete.sh
+chmod +x 6in4-delete.sh
+./6in4-delete.sh --list
+./6in4-delete.sh <tunnel_name>
 ```
 
-将上面的```<name>```改为查询到的名字即可
+删除所有活动记录：
 
-客户端
-
+```bash
+./6in4-delete.sh --all
 ```
+
+删除操作会移除内核隧道、停用已生成的 systemd 服务，并将分配记录标记为 deleted，使子网可被后续运行回收。
+
+非破坏性状态流检查：
+
+```bash
+SIXIN4_STATE_DIR=/tmp/6in4-dry-run/state ./6in4-delete.sh --dry-run --all
+```
+
+`--dry-run` 只预览删除操作，不会删除持久化文件，也不会修改 `allocations.tsv`。
+
+客户端删除：
+
+```bash
 ip link set user-ipv6 down
 ip tunnel del user-ipv6
 ```
 
-## 持久化隧道
+## 持久化
 
-详见 [https://virt.spiritlhl.net/guide/incus_custom.html](https://virt.spiritlhl.net/guide/incus_custom.html) 和 [https://ipv6tunnel.spiritlhl.top/](https://ipv6tunnel.spiritlhl.top/) 中的说明
+Linux 会生成：
+
+- `server-up.sh` 和 `server-down.sh`
+- `6in4-<tunnel_name>.service`
+- `systemd-networkd-<tunnel_name>.netdev`
+- `systemd-networkd-<tunnel_name>.network`
+- `netplan-<tunnel_name>.yaml`
+- `ifcfg-<tunnel_name>`
+- 客户端 shell、systemd 和 `client-install.sh` 模板
+
+当系统存在 systemd 且未使用 `--no-persist` 时，服务端 systemd 单元会自动启用，以便重启后恢复隧道。netplan、systemd-networkd、ifcfg 和 BSD 文件仅生成模板，因为盲目安装可能与现有网络管理器冲突。
+
+## 诊断
+
+检查服务端：
+
+```bash
+ip addr show
+ip -6 route show
+systemctl status ndpresponder
+```
+
+检查客户端：
+
+```bash
+ip addr show
+curl ipv6.ip.sb
+```
+
+健康检查会在服务端创建后 ping 生成的客户端 IPv6 地址。客户端尚未应用隧道配置前该检查可能失败，脚本会输出隧道、地址和路由诊断信息。
+
+## ifupdown 转换辅助脚本
+
+`covert.sh` 用于在 `ifupdown` 和 `ifupdown2` 之间转换 `/etc/network/interfaces` 的隧道语法。现在会先备份文件，转换后使用 `ifquery --check --all` 或 `ifup --no-act -a` 验证配置；如果验证或重启 networking 失败，会自动恢复备份。
