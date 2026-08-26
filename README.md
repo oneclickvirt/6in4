@@ -61,7 +61,7 @@ Options:
 | Option | Description |
 | --- | --- |
 | `mode_type` | `gre`, `sit`, or `ipip` on Linux. BSD uses `sit`, implemented with `gif(4)`. Default: `sit`. |
-| `subnet_size` | IPv6 subnet prefix length, such as `64`, `80`, or `112`. It must be greater than or equal to the server prefix and a multiple of 8. Default: `80`. |
+| `subnet_size` | IPv6 subnet prefix length, such as `64`, `80`, `112`, non-byte-aligned `/54`, or point-to-point `/127`. It must be greater than or equal to the server prefix; `/128` is rejected because a tunnel needs two endpoints. Default: `80`. |
 | `--interface <name>` | Force the server public interface. |
 | `--no-telemetry` | Disable the hits counter request. |
 | `--skip-health-check` | Skip the post-create ping6 check. |
@@ -101,7 +101,6 @@ Runtime files are kept out of `/usr/local/bin`:
 
 ```text
 /var/lib/6in4/allocations.tsv
-/var/lib/6in4/subnets_*.list
 /var/lib/6in4/persistent/<tunnel_name>/
 /var/log/6in4/6in4_server.log
 /var/log/6in4/6in4_client.log

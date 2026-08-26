@@ -61,7 +61,7 @@ chmod +x 6in4.sh
 | 参数 | 说明 |
 | --- | --- |
 | `mode_type` | Linux 支持 `gre`、`sit`、`ipip`。BSD 使用 `sit`，底层由 `gif(4)` 实现。默认：`sit`。 |
-| `subnet_size` | IPv6 子网前缀长度，如 `64`、`80`、`112`。必须大于或等于服务端前缀，且为 8 的倍数。默认：`80`。 |
+| `subnet_size` | IPv6 子网前缀长度，如 `64`、`80`、`112`、非字节边界的 `/54` 或点对点 `/127`。必须大于或等于服务端前缀；隧道需要两个端点，因此拒绝 `/128`。默认：`80`。 |
 | `--interface <name>` | 指定服务端公网网卡。 |
 | `--no-telemetry` | 关闭 hits 统计请求。 |
 | `--skip-health-check` | 跳过创建后的 ping6 健康检查。 |
@@ -101,7 +101,6 @@ SIXIN4_UNDERLAY_MTU=1500
 
 ```text
 /var/lib/6in4/allocations.tsv
-/var/lib/6in4/subnets_*.list
 /var/lib/6in4/persistent/<tunnel_name>/
 /var/log/6in4/6in4_server.log
 /var/log/6in4/6in4_client.log

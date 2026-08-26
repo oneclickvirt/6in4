@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # from
 # https://github.com/oneclickvirt/6in4
-# 2026.06.05
+# 2026.08.26
 
 set -uo pipefail
 export DEBIAN_FRONTEND=noninteractive
@@ -536,10 +536,7 @@ validate_inputs() {
     esac
 
     [[ "$target_mask" =~ ^[0-9]+$ ]] || die "Subnet size must be an integer." "子网长度必须是整数。"
-    [ "$target_mask" -ge 1 ] && [ "$target_mask" -le 128 ] || die "Subnet size must be between 1 and 128." "子网长度必须在 1 到 128 之间。"
-    if [ $((target_mask % 8)) -ne 0 ]; then
-        die "Subnet size must be a multiple of 8 for stable allocation records." "子网长度必须是 8 的倍数，以保证分配记录稳定。"
-    fi
+    [ "$target_mask" -ge 1 ] && [ "$target_mask" -le 127 ] || die "Subnet size must be between 1 and 127; /128 cannot provide both tunnel endpoints." "子网长度必须在 1 到 127 之间；/128 无法同时提供两个隧道端点。"
 
     if [ "$OS_FAMILY" = "bsd" ] && [ "$tunnel_mode" != "sit" ]; then
         die "BSD systems use gif(4) for IPv6-over-IPv4 here; only sit mode is supported." "BSD 系统在此使用 gif(4) 实现 IPv6-over-IPv4，仅支持 sit 模式。"
@@ -958,68 +955,105 @@ PY
 calculate_target_prefix() {
     local total_prefix="$1"
     local requested_prefix="$2"
-    local diff adjusted
-    [[ "$total_prefix" =~ ^[0-9]+$ ]] || die "Invalid detected IPv6 prefix length: ${total_prefix}" "检测到的 IPv6 前缀长度无效：${total_prefix}"
-    [ "$requested_prefix" -ge "$total_prefix" ] || die "Subnet size /${requested_prefix} is smaller than server prefix /${total_prefix}." "子网长度 /${requested_prefix} 小于服务端前缀 /${total_prefix}。"
-    diff=$((requested_prefix - total_prefix))
-    if [ "$diff" -gt 16 ]; then
-        adjusted=$((total_prefix + 8 - (total_prefix % 8)))
-        [ "$adjusted" -le 128 ] || die "Cannot adjust subnet size safely from /${total_prefix}." "无法从 /${total_prefix} 安全调整子网长度。"
-        say_warn "Subnet size adjusted from /${requested_prefix} to /${adjusted} to keep allocation bounded." "为避免分配数量过大，子网长度已从 /${requested_prefix} 调整为 /${adjusted}。"
-        printf '%s\n' "$adjusted"
-    else
-        printf '%s\n' "$requested_prefix"
-    fi
-}
-
-safe_pool_name() {
-    printf '%s_%s_%s' "$ipv6_address" "$ipv6_prefixlen" "$target_mask" | tr '/:.' '____'
-}
-
-generate_subnet_pool() {
-    local pool_file tmp_file
-    pool_file="${STATE_DIR}/subnets_$(safe_pool_name).list"
-    if [ -s "$pool_file" ]; then
-        printf '%s\n' "$pool_file"
-        return 0
-    fi
-
-    tmp_file="${pool_file}.tmp"
-    python3 - "$ipv6_address/$ipv6_prefixlen" "$target_mask" >"$tmp_file" <<'PY'
-import ipaddress
-import sys
-
-interface = ipaddress.IPv6Interface(sys.argv[1])
-target = int(sys.argv[2])
-if target < interface.network.prefixlen:
-    raise SystemExit("target prefix is smaller than source prefix")
-for subnet in interface.network.subnets(new_prefix=target):
-    if interface.ip in subnet:
-        continue
-    print(subnet.with_prefixlen)
-PY
-    [ -s "$tmp_file" ] || die "No allocatable IPv6 subnet was generated." "没有生成可分配的 IPv6 子网。"
-    mv -f "$tmp_file" "$pool_file"
-    printf '%s\n' "$pool_file"
-}
-
-active_subnet_exists() {
-    local subnet="$1"
-    [ -f "$ALLOCATIONS_FILE" ] || return 1
-    awk -F '\t' -v subnet="$subnet" '$6 == subnet && $11 == "active" {found=1} END {exit found ? 0 : 1}' "$ALLOCATIONS_FILE"
+    [[ "$total_prefix" =~ ^[0-9]+$ ]] || {
+        say_error "Invalid detected IPv6 prefix length: ${total_prefix}" "检测到的 IPv6 前缀长度无效：${total_prefix}" >&2
+        return 1
+    }
+    [ "$total_prefix" -ge 0 ] && [ "$total_prefix" -le 127 ] || {
+        say_error "Detected IPv6 prefix /${total_prefix} cannot provide two tunnel endpoints." "检测到的 IPv6 前缀 /${total_prefix} 无法提供两个隧道端点。" >&2
+        return 1
+    }
+    [ "$requested_prefix" -ge 1 ] && [ "$requested_prefix" -le 127 ] || {
+        say_error "Subnet size must be between 1 and 127; /128 cannot provide both tunnel endpoints." "子网长度必须在 1 到 127 之间；/128 无法同时提供两个隧道端点。" >&2
+        return 1
+    }
+    [ "$requested_prefix" -ge "$total_prefix" ] || {
+        say_error "Subnet size /${requested_prefix} is smaller than server prefix /${total_prefix}." "子网长度 /${requested_prefix} 小于服务端前缀 /${total_prefix}。" >&2
+        return 1
+    }
+    printf '%s\n' "$requested_prefix"
 }
 
 allocate_subnet() {
-    local pool_file subnet
-    pool_file=$(generate_subnet_pool)
-    while IFS= read -r subnet; do
-        [ -n "$subnet" ] || continue
-        if ! active_subnet_exists "$subnet"; then
-            printf '%s\n' "$subnet"
-            return 0
-        fi
-    done <"$pool_file"
-    die "No free IPv6 subnet remains for /${target_mask}." "没有剩余可用的 /${target_mask} IPv6 子网。"
+    local subnet
+    # Work with child-subnet index ranges instead of materializing the entire
+    # pool. A /64 split into /112s has 2^48 candidates, so enumeration is not
+    # viable even when only a few allocation records need to be avoided.
+    subnet=$(python3 - "$ipv6_address/$ipv6_prefixlen" "$target_mask" "$ALLOCATIONS_FILE" <<'PY'
+import ipaddress
+import os
+import sys
+
+interface = ipaddress.IPv6Interface(sys.argv[1])
+source = interface.network
+target = int(sys.argv[2])
+allocations_file = sys.argv[3]
+
+if target < source.prefixlen or target > 127:
+    raise SystemExit("requested IPv6 prefix is outside the allocatable range")
+
+source_start = int(source.network_address)
+source_end = int(source.broadcast_address)
+subnet_size = 1 << (128 - target)
+candidate_count = 1 << (target - source.prefixlen)
+reserved = []
+
+def reserve_address_range(start, end):
+    """Record all target-sized child indexes touched by an address range."""
+    start = max(source_start, start)
+    end = min(source_end, end)
+    if start > end:
+        return
+    first = (start - source_start) // subnet_size
+    last = (end - source_start) // subnet_size
+    reserved.append((first, last))
+
+# The source interface address must remain on the host network, not be handed
+# to a tunnel. This also makes /127 endpoint allocation safe.
+host_index = (int(interface.ip) - source_start) // subnet_size
+reserved.append((host_index, host_index))
+
+if os.path.isfile(allocations_file):
+    with open(allocations_file, encoding="utf-8") as records:
+        for line_number, line in enumerate(records, start=1):
+            fields = line.rstrip("\n").split("\t")
+            if len(fields) < 11 or fields[10] != "active":
+                continue
+            subnet = fields[5].strip()
+            try:
+                allocated = ipaddress.IPv6Network(subnet, strict=False)
+            except ValueError:
+                print(
+                    f"warning: ignored invalid active allocation at "
+                    f"{allocations_file}:{line_number}: {subnet!r}",
+                    file=sys.stderr,
+                )
+                continue
+            reserve_address_range(
+                int(allocated.network_address), int(allocated.broadcast_address)
+            )
+
+next_index = 0
+for first, last in sorted(reserved):
+    if last < next_index:
+        continue
+    if first > next_index:
+        break
+    next_index = last + 1
+
+if next_index >= candidate_count:
+    raise SystemExit(f"no free IPv6 subnet remains for /{target}")
+
+candidate = ipaddress.IPv6Network(
+    (source_start + next_index * subnet_size, target)
+)
+print(candidate.with_prefixlen)
+PY
+    ) || {
+        say_error "No safe IPv6 subnet remains for /${target_mask}." "没有剩余安全可用的 /${target_mask} IPv6 子网。" >&2
+        return 1
+    }
+    printf '%s\n' "$subnet"
 }
 
 next_tunnel_name() {
@@ -1058,8 +1092,17 @@ import ipaddress
 import sys
 
 net = ipaddress.IPv6Network(sys.argv[1], strict=False)
-server = net.network_address + 1
-client = net.network_address + 2
+if net.num_addresses < 2:
+    raise SystemExit(f"subnet {net} cannot provide both tunnel endpoints")
+if net.prefixlen == 127:
+    # IPv6 does not reserve the all-zero address. Both addresses of a /127 are
+    # usable for a point-to-point tunnel, unlike a larger routed subnet where
+    # we keep the subnet-router anycast address unused.
+    server = net.network_address
+    client = net.network_address + 1
+else:
+    server = net.network_address + 1
+    client = net.network_address + 2
 print(server)
 print(client)
 PY
@@ -1650,10 +1693,17 @@ run_main() {
     select_cdn
     detect_arch
     collect_network_info
-    target_mask=$(calculate_target_prefix "$ipv6_prefixlen" "$target_mask")
-    allocated_subnet=$(allocate_subnet)
+    if ! target_mask=$(calculate_target_prefix "$ipv6_prefixlen" "$target_mask"); then
+        return 1
+    fi
+    if ! allocated_subnet=$(allocate_subnet); then
+        return 1
+    fi
     tunnel_name=$(next_tunnel_name)
-    address_info=$(derive_subnet_addresses "$allocated_subnet")
+    if ! address_info=$(derive_subnet_addresses "$allocated_subnet"); then
+        say_error "Failed to derive tunnel endpoint addresses." "无法计算隧道端点地址。"
+        return 1
+    fi
     server_ipv6=$(printf '%s\n' "$address_info" | sed -n '1p')
     client_ipv6=$(printf '%s\n' "$address_info" | sed -n '2p')
     calculate_mtu
