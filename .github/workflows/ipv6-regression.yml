@@ -1,0 +1,53 @@
+name: IPv6 Script Regression
+
+on:
+  push:
+    paths:
+      - '**/*.sh'
+      - '.github/workflows/ipv6-regression.yml'
+  pull_request:
+    paths:
+      - '**/*.sh'
+      - '.github/workflows/ipv6-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  ipv6-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends shellcheck
+
+      - name: Validate shell scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -d '' shell_files < <(
+            find . -path './.git' -prune -o -type f -name '*.sh' -print0 | sort -z
+          )
+          ((${#shell_files[@]} > 0)) || exit 0
+          for file in "${shell_files[@]}"; do
+            bash -n "$file"
+          done
+          shellcheck -S error -- "${shell_files[@]}"
+
+      - name: Run IPv6 prefix regression test
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tests/test_prefix_handling.sh
