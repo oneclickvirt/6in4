@@ -21,12 +21,27 @@ die() { exit 1; }
 say_error() { :; }
 say_warn() { :; }
 
-# shellcheck disable=SC1090 # The test intentionally loads isolated helpers.
-source <(extract_function calculate_target_prefix)
-# shellcheck disable=SC1090 # The test intentionally loads isolated helpers.
-source <(extract_function derive_subnet_addresses)
-# shellcheck disable=SC1090 # The test intentionally loads isolated helpers.
-source <(extract_function allocate_subnet)
+tmp_dir=$(mktemp -d)
+trap 'rm -rf -- "$tmp_dir"' EXIT
+
+load_function() {
+    local name="$1"
+    local helper_file="$tmp_dir/${name}.sh"
+
+    extract_function "$name" >"$helper_file"
+    [ -s "$helper_file" ] || {
+        printf 'could not extract %s from %s\n' "$name" "$script" >&2
+        exit 1
+    }
+    # A regular temporary file is portable to macOS Bash. Some older Bash
+    # builds do not reliably source a process-substitution file descriptor.
+    # shellcheck disable=SC1090 # The test intentionally loads isolated helpers.
+    source "$helper_file"
+}
+
+load_function calculate_target_prefix
+load_function derive_subnet_addresses
+load_function allocate_subnet
 
 [[ "$(calculate_target_prefix 64 127)" == "127" ]] || {
     printf '%s\n' 'expected /127 point-to-point prefix to remain allocatable' >&2
@@ -51,8 +66,6 @@ if (derive_subnet_addresses '2001:db8:1::/128' >/dev/null 2>&1); then
     exit 1
 fi
 
-tmp_dir=$(mktemp -d)
-trap 'rm -rf -- "$tmp_dir"' EXIT
 ALLOCATIONS_FILE="$tmp_dir/allocations.tsv"
 printf 'created_at\tname\tos_family\tmode\tclient_ipv4\tsubnet\tserver_ipv6\tclient_ipv6\tmtu\tmss\tstatus\tdeleted_at\n' >"$ALLOCATIONS_FILE"
 
