@@ -1225,12 +1225,14 @@ configure_linux_tunnel() {
         die "Failed to install IPv6 subnet route." "安装 IPv6 子网路由失败。"
     fi
 
+    # Preserve an existing SLAAC route before IPv6 forwarding changes the
+    # kernel's RA acceptance policy on the physical uplink.
+    update_sysctl "net.ipv6.conf.${interface}.accept_ra=2"
     update_sysctl "net.ipv6.conf.all.forwarding=1"
-    update_sysctl "net.ipv6.conf.all.proxy_ndp=1"
-    update_sysctl "net.ipv6.conf.default.proxy_ndp=1"
+    # NDP proxying belongs only on the physical uplink and tunnel. A global or
+    # default setting would make unrelated bridges proxy NDP traffic.
     update_sysctl "net.ipv6.conf.${interface}.proxy_ndp=1"
     update_sysctl "net.ipv6.conf.${tunnel_name}.proxy_ndp=1"
-    update_sysctl "net.ipv6.conf.all.accept_ra=2"
     configure_mss_clamp
 }
 
@@ -1409,8 +1411,8 @@ ip link set ${tunnel_name} mtu ${tunnel_mtu}
 ip link set ${tunnel_name} up
 ip addr replace ${server_ipv6}/${target_mask} dev ${tunnel_name}
 ip route replace ${allocated_subnet} dev ${tunnel_name}
+sysctl -w net.ipv6.conf.${interface}.accept_ra=2 >/dev/null 2>&1 || true
 sysctl -w net.ipv6.conf.all.forwarding=1 >/dev/null 2>&1 || true
-sysctl -w net.ipv6.conf.all.proxy_ndp=1 >/dev/null 2>&1 || true
 sysctl -w net.ipv6.conf.${interface}.proxy_ndp=1 >/dev/null 2>&1 || true
 sysctl -w net.ipv6.conf.${tunnel_name}.proxy_ndp=1 >/dev/null 2>&1 || true
 if command -v ip6tables >/dev/null 2>&1; then

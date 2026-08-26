@@ -121,4 +121,20 @@ PY
     exit 1
 }
 
+# The tunnel must preserve SLAAC only on its physical uplink and confine NDP
+# proxying to the two interfaces participating in the tunnel.
+if grep -Fq 'net.ipv6.conf.all.proxy_ndp=1' "$script" || grep -Fq 'net.ipv6.conf.default.proxy_ndp=1' "$script"; then
+    printf '%s\n' '6in4 must not enable NDP proxying globally or for future interfaces' >&2
+    exit 1
+fi
+if grep -Fq 'net.ipv6.conf.all.accept_ra=2' "$script"; then
+    printf '%s\n' '6in4 must not accept router advertisements on unrelated interfaces' >&2
+    exit 1
+fi
+# shellcheck disable=SC2016 # The literal is the source-code contract under test.
+if ! grep -Fq 'net.ipv6.conf.${interface}.accept_ra=2' "$script"; then
+    printf '%s\n' '6in4 must preserve router advertisements on its physical uplink' >&2
+    exit 1
+fi
+
 printf '%s\n' '6in4 IPv6 prefix handling tests passed'
