@@ -1,0 +1,28 @@
+{
+  "repository": "oneclickvirt/6in4",
+  "branch": "main",
+  "skill_name": "oneclickvirt-6in4",
+  "purpose": "Inspect and configure 6in4 IPv6 connectivity on the intended Linux host.",
+  "notes": [
+    "Use network_status for read-only IPv6 addresses and routes; it does not configure tunnels, proxy NDP or advertise new addresses.",
+    "Confirm the real routed prefix, public IPv4, tunnel peer and interface names before applying the existing scripts. Never use documentation example prefixes on a live interface.",
+    "Keep native routes, Docker/CNI tracking and existing responder services intact; do not start duplicate responders."
+  ],
+  "guide": "https://www.spiritlhl.net/guide/agent_integrations.html",
+  "releases": false,
+  "mcp": true,
+  "network": true,
+  "source_files": [
+    "6in4-delete.sh",
+    "6in4.sh",
+    "back/6in4.sh",
+    "back/test.sh",
+    "covert.sh"
+  ],
+  "purpose_zh": "查看 Linux IPv6 地址和路由，并按实际网络条件配置 6in4 隧道。",
+  "notes_zh": [
+    "network_status 仅查询 IPv6 地址和路由，不创建隧道、不启用 NDP 代理、不宣告地址。",
+    "执行原有脚本前核对真实路由前缀、公网 IPv4、隧道对端和接口名，不将示例地址直接配置到真实网卡。",
+    "保留现有路由、Docker/CNI 跟踪及 responder 服务，不重复启动同一代理。"
+  ]
+}
